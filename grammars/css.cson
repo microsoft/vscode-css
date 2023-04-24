@@ -1414,8 +1414,11 @@
             | ( deg|grad|rad|turn             # - Angle
               | Hz|kHz                        # - Frequency
               | ch|cm|em|ex|fr|in|mm|mozmm|   # - Length
-                pc|pt|px|q|rem|vh|vmax|vmin|
-                vw
+                pc|pt|px|q|rem|rch|rex|rlh|
+                ic|ric|rcap|vh|vw|vb|vi|svh|
+                svw|svb|svi|dvh|dvw|dvb|dvi|
+                lvh|lvw|lvb|lvi|vmax|vmin|
+                cqw|cqi|cqh|cwb|cqmin|cqmax
               | dpi|dpcm|dppx                 # - Resolution
               | s|ms                          # - Time
               )
