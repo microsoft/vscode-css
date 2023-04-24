@@ -828,7 +828,7 @@
       }
       # Colours
       {
-        'begin': '(?i)(?<![\\w-])(rgba?|hsla?|hwb|lab|lch)(\\()'
+        'begin': '(?i)(?<![\\w-])(rgba?|rgb|hsla?|hsl|hwb|lab|oklab|lch|oklch|color)(\\()'
         'beginCaptures':
           '1':
             'name': 'support.function.misc.css'
