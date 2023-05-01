@@ -1418,7 +1418,7 @@
                 ic|ric|rcap|vh|vw|vb|vi|svh|
                 svw|svb|svi|dvh|dvw|dvb|dvi|
                 lvh|lvw|lvb|lvi|vmax|vmin|
-                cqw|cqi|cqh|cwb|cqmin|cqmax
+                cqw|cqi|cqh|cqb|cqmin|cqmax
               | dpi|dpcm|dppx                 # - Resolution
               | s|ms                          # - Time
               )
