@@ -828,7 +828,7 @@
       }
       # Colours
       {
-        'begin': '(?i)(?<![\\w-])(rgba?|hsla?|hwb|lab|lch)(\\()'
+        'begin': '(?i)(?<![\\w-])(rgba?|rgb|hsla?|hsl|hwb|lab|oklab|lch|oklch|color)(\\()'
         'beginCaptures':
           '1':
             'name': 'support.function.misc.css'
@@ -868,7 +868,7 @@
         'name': 'meta.function.gradient.css'
         'patterns': [
           {
-            'match': '(?i)(?<![\\w-])(from|to|at)(?![\\w-])'
+            'match': '(?i)(?<![\\w-])(from|to|at|in|hue)(?![\\w-])'
             'name': 'keyword.operator.gradient.css'
           }
           {
@@ -916,7 +916,7 @@
       {
         'begin': '''(?xi) (?<![\\w-])
           (annotation|attr|blur|brightness|character-variant|clamp|contrast|counters?
-          |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate
+          |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate|color-mix
           |image-set|invert|local|max|min|minmax|opacity|ornaments|repeat|saturate|sepia
           |styleset|stylistic|swash|symbols)
           (\\()
