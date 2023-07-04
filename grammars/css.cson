@@ -918,7 +918,8 @@
           (annotation|attr|blur|brightness|character-variant|clamp|contrast|counters?
           |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate|color-mix
           |image-set|invert|local|max|min|minmax|opacity|ornaments|repeat|saturate|sepia
-          |styleset|stylistic|swash|symbols)
+          |styleset|stylistic|swash|symbols
+          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign)
           (\\()
         '''
         'beginCaptures':
