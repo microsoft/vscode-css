@@ -1699,6 +1699,9 @@
         'include': '#font-features'
       }
       {
+        'include': '#selector'
+      }
+      {
         # Custom properties
         'match': '''(?x) (?<![\\w-])
           --

@@ -3,6 +3,10 @@
   "description": "CSS support in VS Code",
   "version": "0.0.0",
   "devDependencies": {
-    "coffeelint": "^1.10.1"
+    "coffeelint": "^1.10.1",
+    "coffeescript": "^2.7.0",
+    "cson": "^8.2.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.0.0"
   }
 }
