@@ -1698,9 +1698,9 @@
       {
         'include': '#font-features'
       }
-      {
-        'include': '#selector'
-      }
+      {'include':'selector'}
+      {'include':'at-rules'}
+      {'include':'rule-list'}
       {
         # Custom properties
         'match': '''(?x) (?<![\\w-])
