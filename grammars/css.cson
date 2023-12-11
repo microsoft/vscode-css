@@ -1742,6 +1742,9 @@
         'match': ';'
         'name': 'punctuation.terminator.rule.css'
       }
+      {'include':'#selector'}
+      {'include':'#at-rules'}
+      {'include':'#rule-list'}
     ]
   'selector':
     'begin': '''(?x)
