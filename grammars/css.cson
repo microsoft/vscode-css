@@ -1698,9 +1698,6 @@
       {
         'include': '#font-features'
       }
-      {'include':'selector'}
-      {'include':'at-rules'}
-      {'include':'rule-list'}
       {
         # Custom properties
         'match': '''(?x) (?<![\\w-])
@@ -1745,6 +1742,9 @@
         'match': ';'
         'name': 'punctuation.terminator.rule.css'
       }
+      {'include':'#selector'}
+      {'include':'#at-rules'}
+      {'include':'#rule-list'}
     ]
   'selector':
     'begin': '''(?x)
