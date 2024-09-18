@@ -642,6 +642,9 @@
             'name': 'meta.at-rule.body.css'
             'patterns': [
               {
+                'include': '#nesting-at-rules'
+              }
+              {
                 'include': '$self'
               }
             ]
