@@ -1876,7 +1876,7 @@
               # Consists of a hyphen only
               -                                      # Terminated by either:
               (?= $                                  # - End-of-line
-                | [\\s,.\\#)\\[:{>+~|]               # - Followed by another selector
+                | [\\s,.\\#)\\[:{>+~|&]               # - Followed by another selector
                 | /\\*                               # - Followed by a block comment
               )
               |
@@ -1917,7 +1917,7 @@
             )+
           )                                      # Followed by either:
           (?= $                                  # - End of the line
-            | [\\s,.\\#)\\[:{>+~|]               # - Another selector
+            | [\\s,.\\#)\\[:{>+~|&]               # - Another selector
             | /\\*                               # - A block comment
           )
         '''
@@ -1940,7 +1940,7 @@
             (?![0-9])
             (?:[-a-zA-Z0-9_]|[^\\x00-\\x7F]|\\\\(?:[0-9a-fA-F]{1,6}|.))+
           )
-          (?=$|[\\s,.\\#)\\[:{>+~|]|/\\*)
+          (?=$|[\\s,.\\#)\\[:{>+~|&]|/\\*)
         '''
         'name': 'entity.other.attribute-name.id.css'
       }
@@ -2143,7 +2143,7 @@
         | mrow|ms|mscarries|mscarry|msgroup|msline|mspace|msqrt|msrow|mstack|mstyle|msub|msubsup
         | msup|mtable|mtd|mtext|mtr|munder|munderover|semantics
       )
-      (?=[+~>\\s,.\\#|){:\\[]|/\\*|$)
+      (?=[+~>\\s,.\\#|&){:\\[]|/\\*|$)
     '''
     'name': 'entity.name.tag.css'
   'unicode-range':
