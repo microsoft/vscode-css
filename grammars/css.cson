@@ -1601,17 +1601,17 @@
       (?=$|[{,\\s;]|/\\*)
     '''
   'nesting-at-rules':
-			'patterns': [
-				{
-					'include': '#commas'
-				}
-				{
-					'include': '#nesting-rules'
-				}
-				{
-					'include': '#rule-list-innards'
-				}
-			]
+    'patterns': [
+      {
+        'include': '#commas'
+      }
+      {
+        'include': '#nesting-rules'
+      }
+      {
+        'include': '#rule-list-innards'
+      }
+    ]
   'nesting-rules':
     'patterns': [
       {
