@@ -40,7 +40,7 @@
 ]
 'repository':
   'arithmetic-operators':
-    'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)',
+    'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)'
     'name': 'keyword.operator.arithmetic.css'
   'at-rules':
     'patterns': [
@@ -1066,11 +1066,11 @@
   'function-nesting': {
     'patterns': [
       {
-        'begin': '\\(',
+        'begin': '\\('
         'beginCaptures':
           '0':
             'name': 'punctuation.definition.begin.bracket.round.scss'
-        'end': '\\)',
+        'end': '\\)'
         'endCaptures':
           '0':
             'name': 'punctuation.definition.end.bracket.round.scss'
@@ -1435,7 +1435,7 @@
   'nesting-rules':
     'patterns': [
       {
-        'match': '(?xi) (?<![\\w:-])\n(?:\n header|label|mark|nav|ruby|span\n)\n(?=[+~>\\s,.\\#|&){:\\[]|/\\*|$)',
+        'match': '(?xi) (?<![\\w:-])\n(?:\n header|label|mark|nav|ruby|span\n)\n(?=[+~>\\s,.\\#|&){:\\[]|/\\*|$)'
         'name': 'entity.name.tag.css'
       }
       {
