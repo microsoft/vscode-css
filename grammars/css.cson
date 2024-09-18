@@ -782,7 +782,6 @@
         'include': '#container-query'
       }
     ]
-  }
   'container-name':
     'begin': '\\G'
     'end': '(?xi)\n (?=(?:\\(|not)|style\\()\n # Ends when `(`, `not`, or `style(` is reached'
@@ -1243,7 +1242,8 @@
           }
         ]
       }
-  'function-nesting': {
+    ]
+  'function-nesting':
     'patterns': [
       {
         'begin': '\\('
