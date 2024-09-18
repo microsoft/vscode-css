@@ -218,6 +218,9 @@
             'name': 'meta.at-rule.media.body.css'
             'patterns': [
               {
+                  'include': '#nesting-at-rules'
+              }
+              {
                 'include': '$self'
               }
             ]
@@ -1383,6 +1386,18 @@
       )
       (?=$|[{,\\s;]|/\\*)
     '''
+  'nesting-at-rules':
+			'patterns': [
+				{
+					'include': '#commas'
+				}
+				{
+					'include': '#nesting-rules'
+				}
+				{
+					'include': '#rule-list-innards'
+				}
+			]
   'nesting-rules':
     'patterns': [
       {
