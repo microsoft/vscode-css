@@ -1383,6 +1383,19 @@
       )
       (?=$|[{,\\s;]|/\\*)
     '''
+  'nesting-rules':
+    'patterns': [
+      {
+        'match': '(?xi) (?<![\\w:-])\n(?:\n header|label|mark|nav|ruby|span\n)\n(?=[+~>\\s,.\\#|&){:\\[]|/\\*|$)',
+        'name': 'entity.name.tag.css'
+      }
+      {
+        'include': '#property-names'
+      }
+      {
+        'include': '#selector-innards'
+      }
+    ]
   'nesting-selector':
     'match': '&'
     'name': 'entity.name.tag.nesting.selector.css'
@@ -1690,7 +1703,13 @@
     'name': 'meta.property-list.css'
     'patterns': [
       {
+        'include': '#nesting-rules'
+      }
+      {
         'include': '#rule-list-innards'
+      }
+      {
+        'include': '$self'
       }
     ]
   'rule-list-innards':
