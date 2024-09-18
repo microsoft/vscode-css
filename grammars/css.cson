@@ -830,6 +830,9 @@
           {
             'include': '#property-values'
           }
+          {
+            'include': '#function-nesting'
+          }
         ]
       }
       # Colours
@@ -1052,6 +1055,30 @@
           }
           {
             'include': '#property-values'
+          }
+        ]
+      }
+  'function-nesting': {
+    'patterns': [
+      {
+        'begin': '\\(',
+        'beginCaptures':
+          '0':
+            'name': 'punctuation.definition.begin.bracket.round.scss'
+        'end': '\\)',
+        'endCaptures':
+          '0':
+            'name': 'punctuation.definition.end.bracket.round.scss'
+        'patterns': [
+          {
+            'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)',
+            'name': 'keyword.operator.arithmetic.css'
+          }
+          {
+            'include': '#property-values'
+          },
+          {
+            'include': '#function-nesting'
           }
         ]
       }
