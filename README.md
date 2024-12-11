@@ -1,4 +1,4 @@
- # CSS syntax highlighting in VS Code
+# CSS syntax highlighting in VS Code
 
 Adds syntax highlighting to CSS files in VS Code
 
