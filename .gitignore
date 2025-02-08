@@ -1,1 +1,3 @@
 node_modules
+grammars/css.tmLanguage.json
+testing-util/example.css
