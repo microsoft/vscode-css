@@ -1844,7 +1844,7 @@ describe('CSS grammar', function () {
 					assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.section.property-list.end.bracket.curly.css'], value: '}' });
 				});
 
-				it.skip('tokenizes @page:right {} correctly', function () {
+				it('tokenizes @page:right {} correctly', function () {
 					var tokens;
 					tokens = testGrammar.tokenizeLine('@page:right{}').tokens;
 					assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.at-rule.page.css', 'keyword.control.at-rule.page.css', 'punctuation.definition.keyword.css'], value: '@' });
@@ -1865,7 +1865,7 @@ describe('CSS grammar', function () {
 					assert.deepStrictEqual(tokens[4], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.section.property-list.end.bracket.curly.css'], value: '}' });
 				});
 
-				it.skip('tokenizes @page{} correctly', function () {
+				it('tokenizes @page{} correctly', function () {
 					var tokens;
 					tokens = testGrammar.tokenizeLine('@page{}').tokens;
 					assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.at-rule.page.css', 'keyword.control.at-rule.page.css', 'punctuation.definition.keyword.css'], value: '@' });
