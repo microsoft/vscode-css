@@ -36,6 +36,9 @@
   }
 ]
 'repository':
+  'arithmetic-operators':
+    'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)'
+    'name': 'keyword.operator.arithmetic.css'
   'at-rules':
     'patterns': [
       {
@@ -818,8 +821,7 @@
         'name': 'meta.function.calc.css'
         'patterns': [
           {
-            'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)'
-            'name': 'keyword.operator.arithmetic.css'
+            'include': '#arithmetic-operators'
           }
           {
             'include': '#property-values'
@@ -936,6 +938,9 @@
           {
             'match': '(?i)(?<=[,\\s"]|\\*/|^)\\d+x(?=[\\s,"\')]|/\\*|$)'
             'name': 'constant.numeric.other.density.css'
+          }
+          {
+            'include': '#arithmetic-operators'
           }
           {
             'include': '#property-values'
