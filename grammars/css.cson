@@ -1750,6 +1750,9 @@
         'name': 'variable.css'
       }
       {
+        'include': '#selector'
+      }
+      {
         'begin': '(?<![-a-zA-Z])(?=[-a-zA-Z])'
         'end': '$|(?![-a-zA-Z])'
         'name': 'meta.property-name.css'
@@ -1784,20 +1787,73 @@
       }
     ]
   'selector':
-    'begin': '''(?x)
+    'begin': '''(?xi)
+      # Match must be preceded by one of the following:
+      (?<=
+          ^                             # Start of line
+        | (^|[^\\:])\\s                 # Whitespace, after the start of a line or any character except a colon (which denotes a property)
+        | ;                             # Semicolon (condensed property list syntax)
+        | [{}]                          # Opening or closing brace (condensed property list syntax)
+        | \\*/                          # Comment end
+        | \\\\(?:[0-9a-fA-F]{1,6}|.)    # Escape sequence
+      )
+
+      # Match may contain any of the following:
       (?=
-        (?:\\|)?                    # Possible anonymous namespace prefix
         (?:
-          [-\\[:.*\\#a-zA-Z_]       # Valid selector character
-          |
-          [^\\x00-\\x7F]            # Which can include non-ASCII symbols
-          |
-          \\\\                      # Or an escape sequence
-          (?:[0-9a-fA-F]{1,6}|.)
+          # Match must start with one of the following:
+            &                           # Nesting selector
+          | \\*                         # Universal selector
+          | [>~+]                       # Selector combinator
+          | \\|                         # Selector namespace separator
+          | \\[                         # Attribute selector opening bracket
+          | [a-zA-Z]                    # Letter
+          | [^\\x00-\\x7F]              # Non-ASCII symbols
+          | \\\\(?:[0-9a-fA-F]{1,6}|.)  # Escape sequence
+
+          # Or one of the following symbols, followed by a word character, hyphen, or escape sequence:
+          | (?:
+                \\.                     # Class selector
+              | \\#                     # ID selector
+            )
+            (?:
+                [\\w-]                  # Word character or hyphen
+              | \\\\(?:                 # Escape sequence
+                      [0-9a-fA-F]{1,6}
+                    | .
+                  )
+            )
+
+          # Or one of the following symbols, followed a letter or hyphen:
+          | (?:
+                \\:                     # Pseudo-class
+              | \\:\\:                  # Pseudo-element
+            )
+            [a-zA-Z-]                   # Letter or hyphen
         )
       )
-    '''
-    'end': '(?=\\s*[/@{)])'
+
+      # Match must NOT contain any of the following:
+      (?!
+          [\\w-]*[\\:]+\\s              # One or more colons immediately followed by a whitespace (denotes a property or invalid sequence)
+        | [^{]*;                        # Any characters and a semicolon before an opening bracket (denotes the end of a property)
+        | [^{]*}                        # A closing bracket before an opening bracket (denotes a property)
+        | [^\\:]+(\\:\\:):+             # More than two colons (invalid sequence)
+      )
+      '''
+    'end': '''(?x)
+      # Match must end with:
+      (?=
+        \\s*                            # Optional whitespace and one of the following:
+        (?:
+            \\/                         # Comment
+          | @                           # At-rule
+          | {                           # Opening property list brace
+          | \\)                         # Closing function brace (for passing test on `some-edgy-new-function(`)
+          | $                           # End of line
+        )
+      )
+      '''
     'name': 'meta.selector.css'
     'patterns': [
       {
