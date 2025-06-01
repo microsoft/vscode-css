@@ -826,6 +826,9 @@
           {
             'include': '#property-values'
           }
+          {
+            'include': '#function-nesting'
+          }
         ]
       }
       # Colours
@@ -1053,6 +1056,26 @@
             'include': '#property-values'
           }
         ]
+      }
+    ]
+  'function-nesting':
+    'begin': '\\('
+    'beginCaptures':
+      '0':
+        'name': 'punctuation.definition.function.begin.bracket.round.css'
+    'end': '\\)'
+    'endCaptures':
+      '0':
+        'name': 'punctuation.definition.function.end.bracket.round.css'
+    'patterns': [
+      {
+        'include': '#arithmetic-operators'
+      }
+      {
+        'include': '#property-values'
+      },
+      {
+        'include': '#function-nesting'
       }
     ]
   'functional-pseudo-classes':
