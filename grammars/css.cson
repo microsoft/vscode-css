@@ -1686,6 +1686,9 @@
       {
         'include': '#rule-list-innards'
       }
+      {
+        'include': '$self'
+      }
     ]
   'rule-list-innards':
     'patterns': [
