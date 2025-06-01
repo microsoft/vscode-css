@@ -218,6 +218,9 @@
             'name': 'meta.at-rule.media.body.css'
             'patterns': [
               {
+                'include': '#rule-list-innards'
+              }
+              {
                 'include': '$self'
               }
             ]
@@ -635,6 +638,9 @@
                 'name': 'punctuation.section.end.bracket.curly.css'
             'name': 'meta.at-rule.body.css'
             'patterns': [
+              {
+                'include': '#rule-list-innards'
+              }
               {
                 'include': '$self'
               }
