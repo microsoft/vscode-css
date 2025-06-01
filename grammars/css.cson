@@ -23,7 +23,7 @@
     'include': '#escapes'
   }
   {
-    'include': '#combinators'
+    'include': '#combinator-invalid'
   }
   {
     'include': '#selector'
@@ -698,14 +698,16 @@
   'combinators':
     'patterns': [
       {
-        'match': '/deep/|>>>'
-        'name': 'invalid.deprecated.combinator.css'
+        'include': '#combinator-invalid'
       }
       {
         'match': '>>|>|\\+|~'
         'name': 'keyword.operator.combinator.css'
       }
     ]
+  'combinator-invalid':
+    'match': '/deep/|>>>'
+    'name': 'invalid.deprecated.combinator.css'
   'commas':
     'match': ','
     'name': 'punctuation.separator.list.comma.css'
