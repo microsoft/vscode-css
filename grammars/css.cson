@@ -1621,11 +1621,11 @@
           )
           (?![\\w-])
         '''
-        'name': 'support.type.property-name.css'
+        'name': 'meta.property-name.css support.type.property-name.css'
       }
       {
         'match': '(?<![\\w-])(?i:-(?:ah|apple|atsc|epub|hp|khtml|moz|ms|o|rim|ro|tc|wap|webkit|xv)|(?:mso|prince))-[a-zA-Z-]+'
-        'name': 'support.type.vendored.property-name.css'
+        'name': 'meta.property-name.css support.type.vendored.property-name.css'
       }
     ]
   'property-values':
@@ -1752,17 +1752,15 @@
         'name': 'variable.css'
       }
       {
+        'include': '#property-names'
+      }
+      {
         'include': '#selector'
       }
       {
         'begin': '(?<![-a-zA-Z])(?=[-a-zA-Z])'
         'end': '$|(?![-a-zA-Z])'
         'name': 'meta.property-name.css'
-        'patterns': [
-          {
-            'include': '#property-names'
-          }
-        ]
       }
       {
         'begin': '(:)\\s*'
