@@ -34,51 +34,10 @@
   {
     'include': '#rule-list'
   }
-  {
-    'include': '#nesting-selector'
-  }
 ]
 'repository':
-  'arithmetic-operators':
-    'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)'
-    'name': 'keyword.operator.arithmetic.css'
   'at-rules':
     'patterns': [
-      # @container
-      {
-        'begin': '(?i)\\G(@)container'
-        'beginCaptures':
-          '0':
-            'name': 'keyword.control.at-rule.container.css'
-          '1':
-            'name': 'punctuation.definition.keyword.css'
-        'end': '(?=\\s*[{;])'
-        'name': 'meta.at-rule.container.header.css'
-        'patterns': [
-          {
-            'include': '#container-condition'
-          }
-        ]
-      }
-      {
-        'begin': '{'
-        'beginCaptures':
-          '0':
-            'name': 'punctuation.section.container.begin.bracket.curly.css'
-        'end': '}'
-        'endCaptures':
-          '0':
-            'name': 'punctuation.section.container.end.bracket.curly.css'
-        'name': 'meta.at-rule.container.body.css'
-        'patterns': [
-          {
-            'include': '#nesting-at-rules'
-          }
-          {
-            'include': '$self'
-          }
-        ]
-      }
       {
         # @charset, with possible preceding BOM sequence
         'begin': '\\A(?:\\xEF\\xBB\\xBF)?(?i:(?=\\s*@charset\\b))'
@@ -255,9 +214,6 @@
                 'name': 'punctuation.section.media.end.bracket.curly.css'
             'name': 'meta.at-rule.media.body.css'
             'patterns': [
-              {
-                  'include': '#nesting-at-rules'
-              }
               {
                 'include': '$self'
               }
@@ -677,9 +633,6 @@
             'name': 'meta.at-rule.body.css'
             'patterns': [
               {
-                'include': '#nesting-at-rules'
-              }
-              {
                 'include': '$self'
               }
             ]
@@ -757,147 +710,6 @@
       '0':
         'name': 'punctuation.definition.comment.end.css'
     'name': 'comment.block.css'
-  'container-condition':
-    'begin': '\\G'
-    'end': '(?=\\s*[{;])'
-    'patterns': [
-      {
-        'include': '#comment-block'
-      }
-      {
-        'include': '#escapes'
-      }
-      {
-        'match': '(?xi)\n (?<=not.*)not\n # Only one `not` in allowed'
-        'name': 'invalid.illegal.multiple-not.container.css'
-      }
-      {
-        'match': '(?i)(?<=\\s|^|,|\\*/)(and|or|not)(?=\\s|{|/\\*|$)'
-        'name': 'keyword.operator.logical.$1.container.css'
-      }
-      {
-        'include': '#container-name'
-      }
-      {
-        'include': '#container-query'
-      }
-    ]
-  'container-name':
-    'begin': '\\G'
-    'end': '(?xi)\n (?=(?:\\(|not)|style\\()\n # Ends when `(`, `not`, or `style(` is reached'
-    'patterns': [
-      {
-        'include': '#comment-block'
-      }
-      {
-        'captures':
-          '1':
-            'name': 'invalid.illegal.constant.container-name.container.css'
-          '2':
-            'name': 'support.constant.container-name.container.css'
-        'match': '(?xi)\n (?<=^|\\s|\\*/)\n(?:\n # Invalid name\n (default|none)\n |\n # Valid names\n ([a-zA-Z0-9\\-_\\\\]+)\n )\n(?=$|[({\\s;]|/\\*)'
-      }
-    ]
-  'container-query':
-    'begin': '((?<=\\s)\\()|(style)(\\()'
-    'beginCaptures':
-      '1':
-        'name': 'punctuation.definition.parameters.begin.bracket.round.css'
-      '2':
-        'name': 'support.style-query.container.css'
-      '3':
-        'name': 'punctuation.definition.parameters.begin.bracket.round.css'
-    'end': '\\)'
-    'endCaptures':
-      '0':
-        'name': 'punctuation.definition.parameters.end.bracket.round.css'
-    'patterns': [
-      {
-        'begin': '(?xi)\n (?<=\\s\\()\n # Rules for size <container-query>'
-        'end': '(?=\\))'
-        'patterns': [
-          {
-            'include': '#container-query-features'
-          }
-          {
-            'include': '#container-size-features'
-          }
-          {
-            'include': '#container-size-feature-keywords'
-          }
-        ]
-      }
-      {
-        'begin': '(?xi)\n (?<=style\\()\n # Rules for container-query <style-query>'
-        'end': '(?=\\))'
-        'name': 'style-query.container.css'
-        'patterns': [
-          {
-            'include': '#container-query-features'
-          }
-          {
-            'include': '#container-style-features'
-          }
-          {
-            'include': '#container-style-feature-keywords'
-          }
-        ]
-      }
-    ]
-  'container-query-features':
-    'patterns': [
-      {
-        'match': ':'
-        'name': 'punctuation.separator.key-value.css'
-      }
-      {
-        'match': '>=|<=|=|<|>'
-        'name': 'keyword.operator.comparison.css'
-      }
-      {
-        'include': '#numeric-values'
-      }
-      {
-        'include': '#comment-block'
-      }
-    ]
-  'container-size-features':
-    'match': '(?xi)\n (?<=^|\\s|\\(|\\*/) # Preceded by whitespace, bracket or comment\n (?:\n # Standardised features\n (\n (?:min-|max-)? # Range features\n (?: aspect-ratio\n | block-size\n | height\n | inline-size\n | width\n )\n | orientation\n )\n )\n (?=\\s|$|[><:=]|\\)|/\\*) # Terminates cleanly'
-    'name': 'support.size.property-name.container.css'
-  'container-size-feature-keywords':
-    'patterns': [
-      {
-        'match': '(?xi)\n (?<=^|\\s|:|\\*/)\n # Preceded by whitespace, colon, or comment\n (?: portrait\n | landscape\n # Orientation\n )\n (?=\\s|\\)|$)'
-        'name': 'support.constant.property-value.container.css'
-      }
-      {
-        'include': '#functions'
-      }
-    ]
-  'container-style-features':
-    'match': '(?x)\n # Custom Property Name\n (?<=^|\\s|\\(|\\*/) # Preceded by whitespace, bracket or comment\n (?<![\\w-])\n --\n (?:[-a-zA-Z_] | [^\\x00-\\x7F]) # First letter\n (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F] # Remainder of identifier\n |\\\\(?:[0-9a-fA-F]{1,6}|.)\n)*'
-    'name': 'variable.style-query.container.css'
-  'container-style-feature-keywords':
-    'begin': '(?xi)\n (?<=[\\:\\s*|\\*/])\n # Preceded by colon and zero or more whitespaces, or a comment \n (?:(?!\\s)) # Ignore trailing whitespace'
-    'end': '(?=[\\s|\\)|$])'
-    'patterns': [
-      {
-        'match': '(true|false)'
-        'name': 'support.constant.boolean.container.css'
-      }
-      {
-        'include': '#functions'
-      }
-      {
-        'include': '#property-keywords'
-      }
-      {
-        'include': '#unicode-range'
-      }
-      {
-        'include': '#color-keywords'
-      }
-    ]
   'escapes':
     'patterns': [
       {
@@ -1006,13 +818,11 @@
         'name': 'meta.function.calc.css'
         'patterns': [
           {
-            'include': '#arithmetic-operators'
+            'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)'
+            'name': 'keyword.operator.arithmetic.css'
           }
           {
             'include': '#property-values'
-          }
-          {
-            'include': '#function-nesting'
           }
         ]
       }
@@ -1128,9 +938,6 @@
             'name': 'constant.numeric.other.density.css'
           }
           {
-            'include': '#arithmetic-operators'
-          }
-          {
             'include': '#property-values'
           }
           {
@@ -1239,30 +1046,6 @@
           }
           {
             'include': '#property-values'
-          }
-        ]
-      }
-    ]
-  'function-nesting':
-    'patterns': [
-      {
-        'begin': '\\('
-        'beginCaptures':
-          '0':
-            'name': 'punctuation.definition.begin.bracket.round.scss'
-        'end': '\\)'
-        'endCaptures':
-          '0':
-            'name': 'punctuation.definition.end.bracket.round.scss'
-        'patterns': [
-          {
-            'include': '#arithmetic-operators'
-          }
-          {
-            'include': '#property-values'
-          },
-          {
-            'include': '#function-nesting'
           }
         ]
       }
@@ -1569,9 +1352,6 @@
           {
             'include': '#comment-block'
           }
-          {
-            "include": "#functions"
-          }
         ]
       }
     ]
@@ -1600,34 +1380,6 @@
       )
       (?=$|[{,\\s;]|/\\*)
     '''
-  'nesting-at-rules':
-    'patterns': [
-      {
-        'include': '#commas'
-      }
-      {
-        'include': '#nesting-rules'
-      }
-      {
-        'include': '#rule-list-innards'
-      }
-    ]
-  'nesting-rules':
-    'patterns': [
-      {
-        'match': '(?xi) (?<![\\w:-])\n(?:\n header|label|mark|nav|ruby|span\n)\n(?=[+~>\\s,.\\#|&){:\\[]|/\\*|$)'
-        'name': 'entity.name.tag.css'
-      }
-      {
-        'include': '#property-names'
-      }
-      {
-        'include': '#selector-innards'
-      }
-    ]
-  'nesting-selector':
-    'match': '&'
-    'name': 'entity.name.tag.nesting.selector.css'
   'numeric-values':
     'patterns': [
       {
@@ -1932,13 +1684,7 @@
     'name': 'meta.property-list.css'
     'patterns': [
       {
-        'include': '#nesting-rules'
-      }
-      {
         'include': '#rule-list-innards'
-      }
-      {
-        'include': '$self'
       }
     ]
   'rule-list-innards':
@@ -2021,9 +1767,6 @@
   'selector-innards':
     'patterns': [
       {
-        'include': '#nesting-selector'
-      }
-      {
         'include': '#comment-block'
       }
       {
@@ -2090,7 +1833,7 @@
               # Consists of a hyphen only
               -                                      # Terminated by either:
               (?= $                                  # - End-of-line
-                | [\\s,.\\#)\\[:{>+~|&]               # - Followed by another selector
+                | [\\s,.\\#)\\[:{>+~|]               # - Followed by another selector
                 | /\\*                               # - Followed by a block comment
               )
               |
@@ -2131,7 +1874,7 @@
             )+
           )                                      # Followed by either:
           (?= $                                  # - End of the line
-            | [\\s,.\\#)\\[:{>+~|&]               # - Another selector
+            | [\\s,.\\#)\\[:{>+~|]               # - Another selector
             | /\\*                               # - A block comment
           )
         '''
@@ -2154,7 +1897,7 @@
             (?![0-9])
             (?:[-a-zA-Z0-9_]|[^\\x00-\\x7F]|\\\\(?:[0-9a-fA-F]{1,6}|.))+
           )
-          (?=$|[\\s,.\\#)\\[:{>+~|&]|/\\*)
+          (?=$|[\\s,.\\#)\\[:{>+~|]|/\\*)
         '''
         'name': 'entity.other.attribute-name.id.css'
       }
@@ -2357,7 +2100,7 @@
         | mrow|ms|mscarries|mscarry|msgroup|msline|mspace|msqrt|msrow|mstack|mstyle|msub|msubsup
         | msup|mtable|mtd|mtext|mtr|munder|munderover|semantics
       )
-      (?=[+~>\\s,.\\#|&){:\\[]|/\\*|$)
+      (?=[+~>\\s,.\\#|){:\\[]|/\\*|$)
     '''
     'name': 'entity.name.tag.css'
   'unicode-range':
