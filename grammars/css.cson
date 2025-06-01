@@ -1752,6 +1752,9 @@
         'name': 'variable.css'
       }
       {
+        'include': '#shared-names'
+      }
+      {
         'include': '#property-names'
       }
       {
@@ -2110,6 +2113,135 @@
           (?![(\\w-])
         '''
         'name': 'entity.name.tag.custom.css'
+      }
+    ]
+  'shared-names':
+    # Shared names are keywords that are listed in both selector and property name contexts.
+    'patterns': [
+      # The following are considered selectors by default:
+      {
+        'begin': '''(?xi)
+          # Selector match must be preceded by one of the following:
+          (?<=
+              ^                           # Start of line
+            | (^|[^\\:])\\s               # Whitespace, after the start of a line or any character except a colon
+            | [{}]                        # Opening or closing brace (condensed property list syntax)
+            | \\*/                        # Comment end
+            | \\\\(?:[0-9a-fA-F]{1,6}|.)  # Escape sequence
+          )
+
+          (?=
+            # Selector must match:
+            (?:
+              # HTML elements
+              header|image|label|marquee|mask|nav|ruby|shadow|span|style
+              # SVG elements
+              |color-profile|line|text
+            )
+
+            # Selector must NOT be followed by any any of the following:
+            (?!
+                .*;                       # Any characters followed by a semicolon (denotes a property)
+              | [^{]*}                    # Any characters, except an opening brace, followed by a closing bracket (denotes a property)
+              | -                         # A dash (denotes a property name)
+              | \\:\\s+                   # A colon followed by whitespace (denotes a property name)
+            )
+          )
+          '''
+        'end': '''(?xi)
+          # Selector match ends with one of the following:
+          (?=
+              \\s                           # Whitespace
+            | \\/\\*                        # Comment
+            | ,                             # Comma
+            | {                             # Opening property list brace
+            | $                             # End of line
+          )
+          '''
+        'patterns': [
+          {
+            'include': '#selector'
+          }
+        ]
+      }
+      # The following are considered property names by default when attached to a colon:
+      {
+        'begin': '''(?xi)
+          # Selector match must be preceded by one of the following:
+          (?<=
+              ^                           # Start of line
+            | (^|[^\\:])\\s               # Whitespace, after the start of a line or any character except a colon
+            | [{}]                        # Opening or closing brace (condensed property list syntax)
+            | \\*/                        # Comment end
+            | \\\\(?:[0-9a-fA-F]{1,6}|.)  # Escape sequence
+          )
+
+          (?=
+            # Selector must match:
+            (?:
+              # HTML elements
+              content|font|mark
+              # SVG elements
+              |cursor|filter
+            )
+
+            # Selector must NOT be followed by any any of the following:
+            (?!
+                .*;                       # Any characters followed by a semicolon (denotes a property)
+              | [^{]*}                    # Any characters, except an opening brace, followed by a closing bracket (denotes a property)
+              | -                         # A dash (denotes a property name)
+              | \\:                     # A colon, unless it's with one of the following:
+              (?!
+                # A opening bracket before an closing bracket
+                  [^}]*{
+                # A pseudo-class selectors
+                | active|any-link|checked|disabled|empty|enabled|first
+                | (?:first|last|only)-(?:child|of-type)|focus|focus-visible|focus-within|fullscreen|host|hover
+                | in-range|indeterminate|invalid|link|out-of-range
+                | read-only|read-write|required|root|scope|target|unresolved
+                | valid|visited
+
+                # A functional pseudo-class selectors
+                | (?: dir|lang
+                    | not|has|matches|where|is
+                    | nth-(?:last-)?(?:child|of-type)
+                  )\\(
+
+                # A single-colon pseudo-element selectors
+                | after
+                | before
+                | first-letter
+                | first-line
+                | (?:
+                    \\-
+                    (?:
+                        ah|apple|atsc|epub|hp|khtml|moz
+                      | ms|o|rim|ro|tc|wap|webkit|xv
+                    )
+                    | (?:
+                        mso|prince
+                      )
+                  )
+                  -[a-z-]+
+              )
+            )
+          )
+          '''
+        'end': '''(?xi)
+          # Selector match ends with one of the following:
+          (?=
+              \\s                           # Whitespace
+            | \\/\\*                        # Comment
+            | ,                             # Comma
+            | {                             # Opening property list brace
+            | $                             # End of line
+          )
+          '''
+        'patterns': [
+          {
+            'include': '#selector'
+          }
+        ]
       }
     ]
   'string':
