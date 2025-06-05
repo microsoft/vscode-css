@@ -3,11 +3,37 @@
   "description": "CSS support in VS Code",
   "version": "0.0.0",
   "scripts": {
+    "prepare-extension-debugging": "node ./testing-util/prepare-extension-debugging.mjs ",
     "test": "node --test ./spec/css-spec.mjs"
   },
   "devDependencies": {
     "cson": "^8.2.0",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.0.0"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "css",
+        "aliases": [
+          "CSS",
+          "css"
+        ],
+        "extensions": [
+          ".css"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "css",
+        "scopeName": "source.css",
+        "path": "./grammars/css.tmLanguage.json"
+      }
+    ]
   }
 }
