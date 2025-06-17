@@ -2463,6 +2463,12 @@ describe('CSS grammar', function () {
 			assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.property-list.css', 'variable.css'], value: '--white' });
 		});
 
+		it('tokenizes custom properties with a leading digit', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('[data-test] { --4-grid-columns: calc(4 * var(--column-and-gap-width)); }').tokens;
+			assert.deepStrictEqual(tokens[6], { scopes: ['source.css', 'meta.property-list.css', 'variable.css'], value: '--4-grid-columns' });
+		});
+
 		it('tokenises commas between property values', function () {
 			var tokens;
 			tokens = testGrammar.tokenizeLine('a{ text-shadow: a, b; }').tokens;
@@ -2554,6 +2560,13 @@ describe('CSS grammar', function () {
 				var tokens;
 				tokens = testGrammar.tokenizeLine('div { color: var(--primary-color) }').tokens;
 				assert.deepStrictEqual(tokens[9], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.variable.css', 'variable.argument.css'], value: '--primary-color' });
+			});
+
+			it('tokenizes custom variables with a leading digit', function () {
+				var tokens;
+				tokens = testGrammar.tokenizeLine('.flex { grid-template-columns: var(--7-grid-columns-minus-last-gap) var(--4-grid-columns); }').tokens;
+				assert.deepStrictEqual(tokens[10], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.variable.css', 'variable.argument.css'], value: '--7-grid-columns-minus-last-gap' });
+				assert.deepStrictEqual(tokens[15], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.variable.css', 'variable.argument.css'], value: '--4-grid-columns' });
 			});
 
 			it('tokenises numeric values correctly', function () {
