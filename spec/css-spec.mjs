@@ -3720,5 +3720,18 @@ describe('CSS grammar', function () {
 			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
 			assert.deepStrictEqual(tokens[3], { scopes: ['source.css', 'meta.selector.css', 'keyword.operator.combinator.css'], value: '>' });
 		});
+
+		it('tokenizes nested selector with suffix &', function () {
+			var lines;
+			lines = testGrammar.tokenizeLines('.foo::before {\n  content: "Hello";\n\n  .important & {\n    color: red;\n  }\n}');
+			assert.deepStrictEqual(lines[0][0], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+			assert.deepStrictEqual(lines[0][1], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'foo' });
+			assert.deepStrictEqual(lines[0][2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css', 'punctuation.definition.entity.css'], value: '::' });
+			assert.deepStrictEqual(lines[0][3], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css'], value: 'before' });
+			
+			assert.deepStrictEqual(lines[3][1], { scopes: ['source.css', 'meta.property-list.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+			assert.deepStrictEqual(lines[3][2], { scopes: ['source.css', 'meta.property-list.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'important' });
+			assert.deepStrictEqual(lines[3][4], { scopes: ['source.css', 'meta.property-list.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+		});
 	});
 });
