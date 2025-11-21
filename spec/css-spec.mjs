@@ -3690,4 +3690,35 @@ describe('CSS grammar', function () {
 			assert.deepStrictEqual(tokens[0][11], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.section.property-list.end.bracket.curly.css'], value: '}' });
 		});
 	});
+
+	describe('CSS Nesting', function () {
+		it('tokenizes the nesting selector &', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('& {}').tokens;
+			assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+		});
+
+		it('tokenizes the nesting selector & with class', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('&.foo {}').tokens;
+			assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+			assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'foo' });
+		});
+
+		it('tokenizes the nesting selector & with pseudo-class', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('&:hover {}').tokens;
+			assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css', 'punctuation.definition.entity.css'], value: ':' });
+			assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css'], value: 'hover' });
+		});
+
+		it('tokenizes the nesting selector & inside a rule', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('  & > .bar {}').tokens;
+			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+			assert.deepStrictEqual(tokens[3], { scopes: ['source.css', 'meta.selector.css', 'keyword.operator.combinator.css'], value: '>' });
+		});
+	});
 });

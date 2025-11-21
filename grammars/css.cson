@@ -1949,6 +1949,8 @@
                 [!"'%(*;<?@^`|\\]}]                  # - NOTE: We exempt `)` from the list of checked
                 |                                    #   symbols to avoid matching `:not(.invalid)`
                 / (?!\\*)                            # - Avoid invalidating the start of a comment
+                |
+                &(?=[-a-zA-Z_0-9]|[^\\x00-\\x7F])    # - & followed by an identifier is invalid
               )+
             )
             # Mark remainder of selector invalid
