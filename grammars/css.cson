@@ -2194,7 +2194,7 @@
               | -                         # A dash (denotes a property name)
               | \\:                     # A colon, unless it's with one of the following:
               (?!
-                # A opening bracket before an closing bracket
+                # An opening bracket before a closing bracket
                   [^}]*{
                 # A pseudo-class selectors
                 | active|any-link|checked|disabled|empty|enabled|first
