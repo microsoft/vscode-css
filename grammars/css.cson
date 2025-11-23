@@ -932,7 +932,7 @@
           |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate|color-mix
           |image-set|invert|local|max|min|minmax|opacity|ornaments|repeat|saturate|sepia
           |styleset|stylistic|swash|symbols
-          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign)
+          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign|if|style)
           (\\()
         '''
         'beginCaptures':
@@ -1035,6 +1035,34 @@
       }
       {
         'include': '#url'
+      }
+      # Custom functions
+      {
+        'begin': '''(?x) (?<![\\w-])
+          (
+            --
+            (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+            (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+              |\\\\(?:[0-9a-fA-F]{1,6}|.)
+            )*
+          )
+          (\\()
+        '''
+        'beginCaptures':
+          '1':
+            'name': 'support.function.custom.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.custom.css'
+        'patterns': [
+          {
+            'include': '#property-values'
+          }
+        ]
       }
       # Variable expansion
       {
@@ -1630,6 +1658,21 @@
     ]
   'property-values':
     'patterns': [
+      {
+        'begin': '{'
+        'beginCaptures':
+          '0':
+            'name': 'punctuation.section.group.begin.bracket.curly.css'
+        'end': '}'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.group.end.bracket.curly.css'
+        'patterns': [
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
       {
         'include': '#commas'
       }
