@@ -3752,6 +3752,19 @@ describe('CSS grammar', function () {
 			assert.deepStrictEqual(tokens[18], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'punctuation.section.group.end.bracket.curly.css'], value: '}' });
 		});
 
+		it('tokenizes json-like structures with boolean values', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine(':root { --foo: { "bar": true }; }').tokens;
+			assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.property-list.css', 'variable.css'], value: '--foo' });
+			assert.deepStrictEqual(tokens[6], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.separator.key-value.css'], value: ':' });
+			assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'punctuation.section.group.begin.bracket.curly.css'], value: '{' });
+			assert.deepStrictEqual(tokens[10], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css', 'punctuation.definition.string.begin.css'], value: '"' });
+			assert.deepStrictEqual(tokens[11], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css'], value: 'bar' });
+			assert.deepStrictEqual(tokens[12], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css', 'punctuation.definition.string.end.css'], value: '"' });
+			assert.deepStrictEqual(tokens[13], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css'], value: ': true ' });
+			assert.deepStrictEqual(tokens[14], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'punctuation.section.group.end.bracket.curly.css'], value: '}' });
+		});
+
 		it('tokenizes curly braces in function arguments', function () {
 			var tokens;
 			tokens = testGrammar.tokenizeLine('.foo { color: --foo({1, 2, 3}, 4); }').tokens;
