@@ -1038,10 +1038,9 @@
             'name': 'variable.argument.css'
             'match': '''(?x)
               --
-              (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
-              (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+              (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]
                 |\\\\(?:[0-9a-fA-F]{1,6}|.)
-              )*
+              )+
             '''
           }
           {
@@ -1702,10 +1701,9 @@
         # Custom properties
         'match': '''(?x) (?<![\\w-])
           --
-          (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
           (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
             |\\\\(?:[0-9a-fA-F]{1,6}|.)
-          )*
+          )+
         '''
         'name': 'variable.css'
       }
