@@ -482,6 +482,63 @@
         ]
       }
       {
+        # @layer
+        'begin': '(?i)(?=@layer(\\s|\\(|/\\*|$))'
+        'end': '(?<=})(?!\\G)|(?=;)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)layer'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.layer.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.layer.header.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+              {
+                'include': '#escapes'
+              }
+              {
+                'captures':
+                  '0':
+                    'patterns': [
+                      {
+                        'include': '#escapes'
+                      }
+                    ]
+                'match': '''(?x)
+                  (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+                  (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+                    |\\\\(?:[0-9a-fA-F]{1,6}|.)
+                  )*
+                '''
+                'name': 'variable.parameter.layer-name.css'
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.layer.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.layer.end.bracket.curly.css'
+            'name': 'meta.at-rule.layer.body.css'
+            'patterns': [
+              {
+                'include': '$self'
+              }
+            ]
+          }
+        ]
+      }
+      {
         # @viewport
         'begin': '(?i)((@)(-(ms|o)-)?viewport)(?=[\\s\'"{;]|/\\*|$)'
         'beginCaptures':
