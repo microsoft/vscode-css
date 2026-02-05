@@ -675,10 +675,19 @@
         'name': 'support.constant.color.current.css'
       }
       {
+        # CSS4 color names https://drafts.csswg.org/css-color-4/#css-system-colors
+        'match': '''(?xi) (?<![\\w-])
+          (accentcolor|accentcolortext|activetext|buttonborder|buttonface|buttontext|canvas|canvastext|field|fieldtext
+          |graytext|highlight|highlighttext|linktext|mark|marktext|selecteditem|selecteditemtext|visitedtext)
+          (?![\\w-])
+        '''
+        'name': 'support.constant.color.system.css'
+      }
+      {
         # These colours are deprecated in CSS3: http://www.w3.org/TR/css3-color/#css2-system
         'match': '''(?xi) (?<![\\w-])
-          (ActiveBorder|ActiveCaption|AppWorkspace|Background|ButtonFace|ButtonHighlight|ButtonShadow
-          |ButtonText|CaptionText|GrayText|Highlight|HighlightText|InactiveBorder|InactiveCaption
+          (ActiveBorder|ActiveCaption|AppWorkspace|Background|ButtonHighlight|ButtonShadow
+          |CaptionText|InactiveBorder|InactiveCaption
           |InactiveCaptionText|InfoBackground|InfoText|Menu|MenuText|Scrollbar|ThreeDDarkShadow
           |ThreeDFace|ThreeDHighlight|ThreeDLightShadow|ThreeDShadow|Window|WindowFrame|WindowText)
           (?![\\w-])
