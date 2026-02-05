@@ -23,7 +23,7 @@
     'include': '#escapes'
   }
   {
-    'include': '#combinators'
+    'include': '#combinator-invalid'
   }
   {
     'include': '#selector'
@@ -36,6 +36,9 @@
   }
 ]
 'repository':
+  'arithmetic-operators':
+    'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)'
+    'name': 'keyword.operator.arithmetic.css'
   'at-rules':
     'patterns': [
       {
@@ -214,6 +217,9 @@
                 'name': 'punctuation.section.media.end.bracket.curly.css'
             'name': 'meta.at-rule.media.body.css'
             'patterns': [
+              {
+                'include': '#rule-list-innards'
+              }
               {
                 'include': '$self'
               }
@@ -633,6 +639,9 @@
             'name': 'meta.at-rule.body.css'
             'patterns': [
               {
+                'include': '#rule-list-innards'
+              }
+              {
                 'include': '$self'
               }
             ]
@@ -643,12 +652,12 @@
   'color-keywords':
     'patterns': [
       {
-        # CSS 2.1 colours: http://www.w3.org/TR/CSS21/syndata.html#value-def-color
+        # CSS 2.1 colors: http://www.w3.org/TR/CSS21/syndata.html#value-def-color
         'match': '(?i)(?<![\\w-])(aqua|black|blue|fuchsia|gray|green|lime|maroon|navy|olive|orange|purple|red|silver|teal|white|yellow)(?![\\w-])'
         'name': 'support.constant.color.w3c-standard-color-name.css'
       }
       {
-        # SVG/CSS3 colour names: http://www.w3.org/TR/css3-color/#svg-color
+        # SVG/CSS3 color names: http://www.w3.org/TR/css3-color/#svg-color
         'match': '''(?xi) (?<![\\w-])
           (aliceblue|antiquewhite|aquamarine|azure|beige|bisque|blanchedalmond|blueviolet|brown|burlywood
           |cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan
@@ -670,12 +679,12 @@
         'name': 'support.constant.color.w3c-extended-color-name.css'
       }
       {
-        # Current text colour
+        # Current text color
         'match': '(?i)(?<![\\w-])currentColor(?![\\w-])'
         'name': 'support.constant.color.current.css'
       }
       {
-        # These colours are deprecated in CSS3: http://www.w3.org/TR/css3-color/#css2-system
+        # These colors are deprecated in CSS3: http://www.w3.org/TR/css3-color/#css2-system
         'match': '''(?xi) (?<![\\w-])
           (ActiveBorder|ActiveCaption|AppWorkspace|Background|ButtonFace|ButtonHighlight|ButtonShadow
           |ButtonText|CaptionText|GrayText|Highlight|HighlightText|InactiveBorder|InactiveCaption
@@ -689,14 +698,16 @@
   'combinators':
     'patterns': [
       {
-        'match': '/deep/|>>>'
-        'name': 'invalid.deprecated.combinator.css'
+        'include': '#combinator-invalid'
       }
       {
         'match': '>>|>|\\+|~'
         'name': 'keyword.operator.combinator.css'
       }
     ]
+  'combinator-invalid':
+    'match': '/deep/|>>>'
+    'name': 'invalid.deprecated.combinator.css'
   'commas':
     'match': ','
     'name': 'punctuation.separator.list.comma.css'
@@ -818,15 +829,17 @@
         'name': 'meta.function.calc.css'
         'patterns': [
           {
-            'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)'
-            'name': 'keyword.operator.arithmetic.css'
+            'include': '#arithmetic-operators'
           }
           {
             'include': '#property-values'
           }
+          {
+            'include': '#function-nesting'
+          }
         ]
       }
-      # Colours
+      # Colors
       {
         'begin': '(?i)(?<![\\w-])(rgba?|rgb|hsla?|hsl|hwb|lab|oklab|lch|oklch|color)(\\()'
         'beginCaptures':
@@ -919,7 +932,7 @@
           |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate|color-mix
           |image-set|invert|local|max|min|minmax|opacity|ornaments|repeat|saturate|sepia
           |styleset|stylistic|swash|symbols
-          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign)
+          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign|if|style)
           (\\()
         '''
         'beginCaptures':
@@ -936,6 +949,9 @@
           {
             'match': '(?i)(?<=[,\\s"]|\\*/|^)\\d+x(?=[\\s,"\')]|/\\*|$)'
             'name': 'constant.numeric.other.density.css'
+          }
+          {
+            'include': '#arithmetic-operators'
           }
           {
             'include': '#property-values'
@@ -1020,6 +1036,34 @@
       {
         'include': '#url'
       }
+      # Custom functions
+      {
+        'begin': '''(?x) (?<![\\w-])
+          (
+            --
+            (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+            (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+              |\\\\(?:[0-9a-fA-F]{1,6}|.)
+            )*
+          )
+          (\\()
+        '''
+        'beginCaptures':
+          '1':
+            'name': 'support.function.custom.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.custom.css'
+        'patterns': [
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
       # Variable expansion
       {
         'begin': '(?i)(?<![\\w-])(var)(\\()'
@@ -1048,6 +1092,26 @@
             'include': '#property-values'
           }
         ]
+      }
+    ]
+  'function-nesting':
+    'begin': '\\('
+    'beginCaptures':
+      '0':
+        'name': 'punctuation.definition.function.begin.bracket.round.css'
+    'end': '\\)'
+    'endCaptures':
+      '0':
+        'name': 'punctuation.definition.function.end.bracket.round.css'
+    'patterns': [
+      {
+        'include': '#arithmetic-operators'
+      }
+      {
+        'include': '#property-values'
+      },
+      {
+        'include': '#function-nesting'
       }
     ]
   'functional-pseudo-classes':
@@ -1352,6 +1416,9 @@
           {
             'include': '#comment-block'
           }
+          {
+            'include': '#functions'
+          }
         ]
       }
     ]
@@ -1582,15 +1649,30 @@
           )
           (?![\\w-])
         '''
-        'name': 'support.type.property-name.css'
+        'name': 'meta.property-name.css support.type.property-name.css'
       }
       {
         'match': '(?<![\\w-])(?i:-(?:ah|apple|atsc|epub|hp|khtml|moz|ms|o|rim|ro|tc|wap|webkit|xv)|(?:mso|prince))-[a-zA-Z-]+'
-        'name': 'support.type.vendored.property-name.css'
+        'name': 'meta.property-name.css support.type.vendored.property-name.css'
       }
     ]
   'property-values':
     'patterns': [
+      {
+        'begin': '{'
+        'beginCaptures':
+          '0':
+            'name': 'punctuation.section.group.begin.bracket.curly.css'
+        'end': '}'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.group.end.bracket.curly.css'
+        'patterns': [
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
       {
         'include': '#commas'
       }
@@ -1686,6 +1768,9 @@
       {
         'include': '#rule-list-innards'
       }
+      {
+        'include': '$self'
+      }
     ]
   'rule-list-innards':
     'patterns': [
@@ -1710,14 +1795,18 @@
         'name': 'variable.css'
       }
       {
+        'include': '#shared-names'
+      }
+      {
+        'include': '#property-names'
+      }
+      {
+        'include': '#selector'
+      }
+      {
         'begin': '(?<![-a-zA-Z])(?=[-a-zA-Z])'
         'end': '$|(?![-a-zA-Z])'
         'name': 'meta.property-name.css'
-        'patterns': [
-          {
-            'include': '#property-names'
-          }
-        ]
       }
       {
         'begin': '(:)\\s*'
@@ -1744,20 +1833,73 @@
       }
     ]
   'selector':
-    'begin': '''(?x)
+    'begin': '''(?xi)
+      # Match must be preceded by one of the following:
+      (?<=
+          ^                             # Start of line
+        | (^|[^\\:])\\s                 # Whitespace, after the start of a line or any character except a colon (which denotes a property)
+        | ;                             # Semicolon (condensed property list syntax)
+        | [{}]                          # Opening or closing brace (condensed property list syntax)
+        | \\*/                          # Comment end
+        | \\\\(?:[0-9a-fA-F]{1,6}|.)    # Escape sequence
+      )
+
+      # Match may contain any of the following:
       (?=
-        (?:\\|)?                    # Possible anonymous namespace prefix
         (?:
-          [-\\[:.*\\#a-zA-Z_]       # Valid selector character
-          |
-          [^\\x00-\\x7F]            # Which can include non-ASCII symbols
-          |
-          \\\\                      # Or an escape sequence
-          (?:[0-9a-fA-F]{1,6}|.)
+          # Match must start with one of the following:
+            &                           # Nesting selector
+          | \\*                         # Universal selector
+          | [>~+]                       # Selector combinator
+          | \\|                         # Selector namespace separator
+          | \\[                         # Attribute selector opening bracket
+          | [a-zA-Z]                    # Letter
+          | [^\\x00-\\x7F]              # Non-ASCII symbols
+          | \\\\(?:[0-9a-fA-F]{1,6}|.)  # Escape sequence
+
+          # Or one of the following symbols, followed by a word character, hyphen, or escape sequence:
+          | (?:
+                \\.                     # Class selector
+              | \\#                     # ID selector
+            )
+            (?:
+                [\\w-]                  # Word character or hyphen
+              | \\\\(?:                 # Escape sequence
+                      [0-9a-fA-F]{1,6}
+                    | .
+                  )
+            )
+
+          # Or one of the following symbols, followed a letter or hyphen:
+          | (?:
+                \\:                     # Pseudo-class
+              | \\:\\:                  # Pseudo-element
+            )
+            [a-zA-Z-]                   # Letter or hyphen
         )
       )
-    '''
-    'end': '(?=\\s*[/@{)])'
+
+      # Match must NOT contain any of the following:
+      (?!
+          [\\w-]*[\\:]+\\s              # One or more colons immediately followed by a whitespace (denotes a property or invalid sequence)
+        | [^{]*;                        # Any characters and a semicolon before an opening bracket (denotes the end of a property)
+        | [^{]*}                        # A closing bracket before an opening bracket (denotes a property)
+        | [^\\:]+(\\:\\:):+             # More than two colons (invalid sequence)
+      )
+      '''
+    'end': '''(?x)
+      # Match must end with:
+      (?=
+        \\s*                            # Optional whitespace and one of the following:
+        (?:
+            \\/                         # Comment
+          | @                           # At-rule
+          | {                           # Opening property list brace
+          | \\)                         # Closing function brace (for passing test on `some-edgy-new-function(`)
+          | $                           # End of line
+        )
+      )
+      '''
     'name': 'meta.selector.css'
     'patterns': [
       {
@@ -1790,7 +1932,7 @@
             [-\\w*]+
             \\|
             (?!
-                [-\\[:.*\\#a-zA-Z_]    # Make sure there's a selector to match
+                [-\\[:.*&\\#a-zA-Z_]   # Make sure there's a selector to match
               | [^\\x00-\\x7F]
             )
           )
@@ -1807,6 +1949,10 @@
       }
       {
         'include': '#tag-names'
+      }
+      {
+        'match': '&'
+        'name': 'entity.name.tag.nesting.css'
       }
       {
         'match': '\\*'
@@ -1833,7 +1979,7 @@
               # Consists of a hyphen only
               -                                      # Terminated by either:
               (?= $                                  # - End-of-line
-                | [\\s,.\\#)\\[:{>+~|]               # - Followed by another selector
+                | [\\s,.\\#)\\[:{>+~|&]              # - Followed by another selector
                 | /\\*                               # - Followed by a block comment
               )
               |
@@ -1843,9 +1989,11 @@
                 | \\\\(?:[0-9a-fA-F]{1,6}|.)         # - Escape sequence
               )*
               (?:                                    # Invalid punctuation
-                [!"'%&(*;<?@^`|\\]}]                 # - NOTE: We exempt `)` from the list of checked
+                [!"'%(*;<?@^`|\\]}]                  # - NOTE: We exempt `)` from the list of checked
                 |                                    #   symbols to avoid matching `:not(.invalid)`
                 / (?!\\*)                            # - Avoid invalidating the start of a comment
+                |
+                &(?=[-a-zA-Z_0-9]|[^\\x00-\\x7F])    # - & followed by an identifier is invalid
               )+
             )
             # Mark remainder of selector invalid
@@ -1874,7 +2022,7 @@
             )+
           )                                      # Followed by either:
           (?= $                                  # - End of the line
-            | [\\s,.\\#)\\[:{>+~|]               # - Another selector
+            | [\\s,.\\#)\\[:{>+~|&]              # - Another selector
             | /\\*                               # - A block comment
           )
         '''
@@ -1897,7 +2045,7 @@
             (?![0-9])
             (?:[-a-zA-Z0-9_]|[^\\x00-\\x7F]|\\\\(?:[0-9a-fA-F]{1,6}|.))+
           )
-          (?=$|[\\s,.\\#)\\[:{>+~|]|/\\*)
+          (?=$|[\\s,.\\#)\\[:{>+~|&]|/\\*)
         '''
         'name': 'entity.other.attribute-name.id.css'
       }
@@ -2012,6 +2160,135 @@
         'name': 'entity.name.tag.custom.css'
       }
     ]
+  'shared-names':
+    # Shared names are keywords that are listed in both selector and property name contexts.
+    'patterns': [
+      # The following are considered selectors by default:
+      {
+        'begin': '''(?xi)
+          # Selector match must be preceded by one of the following:
+          (?<=
+              ^                           # Start of line
+            | (^|[^\\:])\\s               # Whitespace, after the start of a line or any character except a colon
+            | [{}]                        # Opening or closing brace (condensed property list syntax)
+            | \\*/                        # Comment end
+            | \\\\(?:[0-9a-fA-F]{1,6}|.)  # Escape sequence
+          )
+
+          (?=
+            # Selector must match:
+            (?:
+              # HTML elements
+              header|image|label|marquee|mask|nav|ruby|shadow|span|style
+              # SVG elements
+              |color-profile|line|text
+            )
+
+            # Selector must NOT be followed by any any of the following:
+            (?!
+                .*;                       # Any characters followed by a semicolon (denotes a property)
+              | [^{]*}                    # Any characters, except an opening brace, followed by a closing bracket (denotes a property)
+              | -                         # A dash (denotes a property name)
+              | \\:\\s+                   # A colon followed by whitespace (denotes a property name)
+            )
+          )
+          '''
+        'end': '''(?xi)
+          # Selector match ends with one of the following:
+          (?=
+              \\s                           # Whitespace
+            | \\/\\*                        # Comment
+            | ,                             # Comma
+            | {                             # Opening property list brace
+            | $                             # End of line
+          )
+          '''
+        'patterns': [
+          {
+            'include': '#selector'
+          }
+        ]
+      }
+      # The following are considered property names by default when attached to a colon:
+      {
+        'begin': '''(?xi)
+          # Selector match must be preceded by one of the following:
+          (?<=
+              ^                           # Start of line
+            | (^|[^\\:])\\s               # Whitespace, after the start of a line or any character except a colon
+            | [{}]                        # Opening or closing brace (condensed property list syntax)
+            | \\*/                        # Comment end
+            | \\\\(?:[0-9a-fA-F]{1,6}|.)  # Escape sequence
+          )
+
+          (?=
+            # Selector must match:
+            (?:
+              # HTML elements
+              content|font|mark
+              # SVG elements
+              |cursor|filter
+            )
+
+            # Selector must NOT be followed by any any of the following:
+            (?!
+                .*;                       # Any characters followed by a semicolon (denotes a property)
+              | [^{]*}                    # Any characters, except an opening brace, followed by a closing bracket (denotes a property)
+              | -                         # A dash (denotes a property name)
+              | \\:                     # A colon, unless it's with one of the following:
+              (?!
+                # An opening bracket before a closing bracket
+                  [^}]*{
+                # A pseudo-class selectors
+                | active|any-link|checked|disabled|empty|enabled|first
+                | (?:first|last|only)-(?:child|of-type)|focus|focus-visible|focus-within|fullscreen|host|hover
+                | in-range|indeterminate|invalid|link|out-of-range
+                | read-only|read-write|required|root|scope|target|unresolved
+                | valid|visited
+
+                # A functional pseudo-class selectors
+                | (?: dir|lang
+                    | not|has|matches|where|is
+                    | nth-(?:last-)?(?:child|of-type)
+                  )\\(
+
+                # A single-colon pseudo-element selectors
+                | after
+                | before
+                | first-letter
+                | first-line
+                | (?:
+                    \\-
+                    (?:
+                        ah|apple|atsc|epub|hp|khtml|moz
+                      | ms|o|rim|ro|tc|wap|webkit|xv
+                    )
+                    | (?:
+                        mso|prince
+                      )
+                  )
+                  -[a-z-]+
+              )
+            )
+          )
+          '''
+        'end': '''(?xi)
+          # Selector match ends with one of the following:
+          (?=
+              \\s                           # Whitespace
+            | \\/\\*                        # Comment
+            | ,                             # Comma
+            | {                             # Opening property list brace
+            | $                             # End of line
+          )
+          '''
+        'patterns': [
+          {
+            'include': '#selector'
+          }
+        ]
+      }
+    ]
   'string':
     'patterns': [
       {
@@ -2100,7 +2377,7 @@
         | mrow|ms|mscarries|mscarry|msgroup|msline|mspace|msqrt|msrow|mstack|mstyle|msub|msubsup
         | msup|mtable|mtd|mtext|mtr|munder|munderover|semantics
       )
-      (?=[+~>\\s,.\\#|){:\\[]|/\\*|$)
+      (?=[+~>\\s,.\\#|&){:\\[]|/\\*|$)
     '''
     'name': 'entity.name.tag.css'
   'unicode-range':
