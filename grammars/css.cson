@@ -141,6 +141,9 @@
             'include': '#url'
           }
           {
+            'match': '\\s+'
+          }
+          {
             'include': '#layer-import'
           }
           {
@@ -693,11 +696,11 @@
   'layer-import':
     'patterns': [
       {
-        'begin': '(?i)(?<![\\w-])(\\s*)(layer)(\\()'
+        'begin': '(?i)(?<![\\w-])(layer)(\\()'
         'beginCaptures':
-          '2':
+          '1':
             'name': 'support.function.layer.css'
-          '3':
+          '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
         'end': '\\)'
         'endCaptures':
@@ -718,9 +721,9 @@
       }
       {
         'captures':
-          '2':
+          '1':
             'name': 'keyword.other.layer.css'
-        'match': '(?i)(?<![\\w-])(\\s*)(layer)(?![\\w-])'
+        'match': '(?i)(?<![\\w-])(layer)(?![\\w-])'
       }
     ]
   'layer-name-list':
