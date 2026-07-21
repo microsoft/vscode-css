@@ -144,6 +144,12 @@
             'include': '#url'
           }
           {
+            'match': '\\s+'
+          }
+          {
+            'include': '#layer-import'
+          }
+          {
             'include': '#media-query-list'
           }
         ]
@@ -488,6 +494,53 @@
         ]
       }
       {
+        # @layer
+        'begin': '(?i)(?=@layer(?:[\\s{;]|/\\*|$))'
+        'end': '(?<=})(?!\\G)|;'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.terminator.rule.css'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)layer'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.layer.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.layer.header.css'
+            'patterns': [
+              {
+                'include': '#layer-name-list'
+              }
+              {
+                'include': '#comment-block'
+              }
+              {
+                'include': '#escapes'
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.layer.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.layer.end.bracket.curly.css'
+            'name': 'meta.at-rule.layer.body.css'
+            'patterns': [
+              {
+                'include': '$self'
+              }
+            ]
+          }
+        ]
+      }
+      {
         # @viewport
         'begin': '(?i)((@)(-(ms|o)-)?viewport)(?=[\\s\'"{;]|/\\*|$)'
         'beginCaptures':
@@ -647,6 +700,69 @@
             ]
           }
         ]
+      }
+    ]
+  'layer-import':
+    'patterns': [
+      {
+        'begin': '(?i)(?<![\\w-])(layer)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.layer.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.layer.css'
+        'patterns': [
+          {
+            'include': '#layer-name-list'
+          }
+          {
+            'include': '#comment-block'
+          }
+          {
+            'include': '#escapes'
+          }
+        ]
+      }
+      {
+        'captures':
+          '1':
+            'name': 'keyword.other.layer.css'
+        'match': '(?i)(?<![\\w-])(layer)(?![\\w-])'
+      }
+    ]
+  'layer-name-list':
+    'patterns': [
+      {
+        'include': '#comment-block'
+      }
+      {
+        'match': ','
+        'name': 'punctuation.separator.list.comma.css'
+      }
+      {
+        'match': '\\.'
+        'name': 'punctuation.accessor.layer.css'
+      }
+      {
+        'captures':
+          '0':
+            'patterns': [
+              {
+                'include': '#escapes'
+              }
+            ]
+        'match': '''(?x)
+          (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+          (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+            |\\\\(?:[0-9a-fA-F]{1,6}|.)
+          )*
+        '''
+        'name': 'variable.parameter.layer-name.css'
       }
     ]
   'color-keywords':
