@@ -1567,6 +1567,69 @@ describe('CSS grammar', function () {
 				});
 			});
 
+			describe('@layer', function () {
+				it('tokenises layer statement lists', function () {
+					var tokens;
+					tokens = testGrammar.tokenizeLine('@layer reset, framework.theme;').tokens;
+					assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'keyword.control.at-rule.layer.css', 'punctuation.definition.keyword.css'], value: '@' });
+					assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'keyword.control.at-rule.layer.css'], value: 'layer' });
+					assert.deepStrictEqual(tokens[3], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'variable.parameter.layer-name.css'], value: 'reset' });
+					assert.deepStrictEqual(tokens[4], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'punctuation.separator.list.comma.css'], value: ',' });
+					assert.deepStrictEqual(tokens[6], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'variable.parameter.layer-name.css'], value: 'framework' });
+					assert.deepStrictEqual(tokens[7], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'punctuation.accessor.layer.css'], value: '.' });
+					assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'variable.parameter.layer-name.css'], value: 'theme' });
+					assert.deepStrictEqual(tokens[9], { scopes: ['source.css', 'punctuation.terminator.rule.css'], value: ';' });
+				});
+
+				it('embeds rulesets and other at-rules', function () {
+					var lines;
+					lines = testGrammar.tokenizeLines("@layer framework {\n  @media (width >= 20em) {\n    .button { color: red; }\n  }\n}");
+					assert.deepStrictEqual(lines[0][0], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'keyword.control.at-rule.layer.css', 'punctuation.definition.keyword.css'], value: '@' });
+					assert.deepStrictEqual(lines[0][1], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'keyword.control.at-rule.layer.css'], value: 'layer' });
+					assert.deepStrictEqual(lines[0][3], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'variable.parameter.layer-name.css'], value: 'framework' });
+					assert.deepStrictEqual(lines[0][5], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'punctuation.section.layer.begin.bracket.curly.css'], value: '{' });
+					assert.deepStrictEqual(lines[1][1], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.media.header.css', 'keyword.control.at-rule.media.css', 'punctuation.definition.keyword.css'], value: '@' });
+					assert.deepStrictEqual(lines[1][2], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.media.header.css', 'keyword.control.at-rule.media.css'], value: 'media' });
+					assert.deepStrictEqual(lines[2][1], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.media.body.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+					assert.deepStrictEqual(lines[2][2], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.media.body.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'button' });
+					assert.deepStrictEqual(lines[4][0], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'punctuation.section.layer.end.bracket.curly.css'], value: '}' });
+				});
+
+				it('tokenises anonymous and nested layers', function () {
+					var tokens;
+					tokens = testGrammar.tokenizeLine('@layer { .foo {} }').tokens;
+					assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'keyword.control.at-rule.layer.css', 'punctuation.definition.keyword.css'], value: '@' });
+					assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.at-rule.layer.header.css', 'keyword.control.at-rule.layer.css'], value: 'layer' });
+					assert.deepStrictEqual(tokens[3], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'punctuation.section.layer.begin.bracket.curly.css'], value: '{' });
+					assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+					assert.deepStrictEqual(tokens[11], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'punctuation.section.layer.end.bracket.curly.css'], value: '}' });
+
+					tokens = testGrammar.tokenizeLine('@layer foo { @layer bar { .foo {} } }').tokens;
+					assert.deepStrictEqual(tokens[7], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.layer.header.css', 'keyword.control.at-rule.layer.css', 'punctuation.definition.keyword.css'], value: '@' });
+					assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.layer.header.css', 'keyword.control.at-rule.layer.css'], value: 'layer' });
+					assert.deepStrictEqual(tokens[10], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.layer.header.css', 'variable.parameter.layer-name.css'], value: 'bar' });
+					assert.deepStrictEqual(tokens[12], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.layer.body.css', 'punctuation.section.layer.begin.bracket.curly.css'], value: '{' });
+					assert.deepStrictEqual(tokens[20], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'meta.at-rule.layer.body.css', 'punctuation.section.layer.end.bracket.curly.css'], value: '}' });
+					assert.deepStrictEqual(tokens[22], { scopes: ['source.css', 'meta.at-rule.layer.body.css', 'punctuation.section.layer.end.bracket.curly.css'], value: '}' });
+				});
+			});
+
+			describe('@import layer', function () {
+				it('tokenises imported layer names', function () {
+					var tokens;
+					tokens = testGrammar.tokenizeLine('@import url("theme.css") layer(framework.theme);').tokens;
+					assert.deepStrictEqual(tokens[10], { scopes: ['source.css', 'meta.at-rule.import.css', 'meta.function.layer.css', 'support.function.layer.css'], value: 'layer' });
+					assert.deepStrictEqual(tokens[11], { scopes: ['source.css', 'meta.at-rule.import.css', 'meta.function.layer.css', 'punctuation.section.function.begin.bracket.round.css'], value: '(' });
+					assert.deepStrictEqual(tokens[12], { scopes: ['source.css', 'meta.at-rule.import.css', 'meta.function.layer.css', 'variable.parameter.layer-name.css'], value: 'framework' });
+					assert.deepStrictEqual(tokens[13], { scopes: ['source.css', 'meta.at-rule.import.css', 'meta.function.layer.css', 'punctuation.accessor.layer.css'], value: '.' });
+					assert.deepStrictEqual(tokens[14], { scopes: ['source.css', 'meta.at-rule.import.css', 'meta.function.layer.css', 'variable.parameter.layer-name.css'], value: 'theme' });
+					assert.deepStrictEqual(tokens[15], { scopes: ['source.css', 'meta.at-rule.import.css', 'meta.function.layer.css', 'punctuation.section.function.end.bracket.round.css'], value: ')' });
+
+					tokens = testGrammar.tokenizeLine('@import "theme.css" layer;').tokens;
+					assert.deepStrictEqual(tokens[7], { scopes: ['source.css', 'meta.at-rule.import.css', 'keyword.other.layer.css'], value: 'layer' });
+				});
+			});
+
 			describe('@namespace', function () {
 				it('tokenises @namespace statements correctly', function () {
 					var tokens;
@@ -3688,6 +3751,117 @@ describe('CSS grammar', function () {
 			assert.deepStrictEqual(tokens[0][9], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.terminator.rule.css'], value: ';' });
 			assert.deepStrictEqual(tokens[0][10], { scopes: ['source.css', 'meta.property-list.css'], value: ' ' });
 			assert.deepStrictEqual(tokens[0][11], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.section.property-list.end.bracket.curly.css'], value: '}' });
+		});
+	});
+
+	describe('CSS Nesting', function () {
+		it('tokenizes the nesting selector &', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('& {}').tokens;
+			assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+		});
+
+		it('tokenizes the nesting selector & with class', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('&.foo {}').tokens;
+			assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+			assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'foo' });
+		});
+
+		it('tokenizes the nesting selector & with pseudo-class', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('&:hover {}').tokens;
+			assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css', 'punctuation.definition.entity.css'], value: ':' });
+			assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css'], value: 'hover' });
+		});
+
+		it('tokenizes the nesting selector & inside a rule', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('  & > .bar {}').tokens;
+			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+			assert.deepStrictEqual(tokens[3], { scopes: ['source.css', 'meta.selector.css', 'keyword.operator.combinator.css'], value: '>' });
+		});
+
+		it('tokenizes nested selector with suffix &', function () {
+			var lines;
+			lines = testGrammar.tokenizeLines('.foo::before {\n  content: "Hello";\n\n  .important & {\n    color: red;\n  }\n}');
+			assert.deepStrictEqual(lines[0][0], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+			assert.deepStrictEqual(lines[0][1], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'foo' });
+			assert.deepStrictEqual(lines[0][2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css', 'punctuation.definition.entity.css'], value: '::' });
+			assert.deepStrictEqual(lines[0][3], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css'], value: 'before' });
+
+			assert.deepStrictEqual(lines[3][1], { scopes: ['source.css', 'meta.property-list.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+			assert.deepStrictEqual(lines[3][2], { scopes: ['source.css', 'meta.property-list.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'important' });
+			assert.deepStrictEqual(lines[3][4], { scopes: ['source.css', 'meta.property-list.css', 'meta.selector.css', 'entity.name.tag.nesting.css'], value: '&' });
+		});
+	});
+
+	describe('advanced property values', function () {
+		it('tokenizes json-like structures in custom properties', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('.foo { --json: { "foo": "bar" }; }').tokens;
+			assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.property-list.css', 'variable.css'], value: '--json' });
+			assert.deepStrictEqual(tokens[6], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.separator.key-value.css'], value: ':' });
+			assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'punctuation.section.group.begin.bracket.curly.css'], value: '{' });
+			assert.deepStrictEqual(tokens[10], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css', 'punctuation.definition.string.begin.css'], value: '"' });
+			assert.deepStrictEqual(tokens[11], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css'], value: 'foo' });
+			assert.deepStrictEqual(tokens[12], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css', 'punctuation.definition.string.end.css'], value: '"' });
+			assert.deepStrictEqual(tokens[13], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css'], value: ': ' });
+			assert.deepStrictEqual(tokens[14], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css', 'punctuation.definition.string.begin.css'], value: '"' });
+			assert.deepStrictEqual(tokens[15], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css'], value: 'bar' });
+			assert.deepStrictEqual(tokens[16], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css', 'punctuation.definition.string.end.css'], value: '"' });
+			assert.deepStrictEqual(tokens[18], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'punctuation.section.group.end.bracket.curly.css'], value: '}' });
+		});
+
+		it('tokenizes json-like structures with boolean values', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine(':root { --foo: { "bar": true }; }').tokens;
+			assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.property-list.css', 'variable.css'], value: '--foo' });
+			assert.deepStrictEqual(tokens[6], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.separator.key-value.css'], value: ':' });
+			assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'punctuation.section.group.begin.bracket.curly.css'], value: '{' });
+			assert.deepStrictEqual(tokens[10], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css', 'punctuation.definition.string.begin.css'], value: '"' });
+			assert.deepStrictEqual(tokens[11], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css'], value: 'bar' });
+			assert.deepStrictEqual(tokens[12], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'string.quoted.double.css', 'punctuation.definition.string.end.css'], value: '"' });
+			assert.deepStrictEqual(tokens[13], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css'], value: ': true ' });
+			assert.deepStrictEqual(tokens[14], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'punctuation.section.group.end.bracket.curly.css'], value: '}' });
+		});
+
+		it('tokenizes curly braces in function arguments', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('.foo { color: --foo({1, 2, 3}, 4); }').tokens;
+			assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-name.css', 'support.type.property-name.css'], value: 'color' });
+			assert.deepStrictEqual(tokens[6], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.separator.key-value.css'], value: ':' });
+			assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'support.function.custom.css'], value: '--foo' });
+			assert.deepStrictEqual(tokens[9], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'punctuation.section.function.begin.bracket.round.css'], value: '(' });
+			assert.deepStrictEqual(tokens[10], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'punctuation.section.group.begin.bracket.curly.css'], value: '{' });
+			assert.deepStrictEqual(tokens[11], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'constant.numeric.css'], value: '1' });
+			assert.deepStrictEqual(tokens[12], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'punctuation.separator.list.comma.css'], value: ',' });
+			assert.deepStrictEqual(tokens[14], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'constant.numeric.css'], value: '2' });
+			assert.deepStrictEqual(tokens[15], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'punctuation.separator.list.comma.css'], value: ',' });
+			assert.deepStrictEqual(tokens[17], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'constant.numeric.css'], value: '3' });
+			assert.deepStrictEqual(tokens[18], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'punctuation.section.group.end.bracket.curly.css'], value: '}' });
+			assert.deepStrictEqual(tokens[19], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'punctuation.separator.list.comma.css'], value: ',' });
+			assert.deepStrictEqual(tokens[21], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'constant.numeric.css'], value: '4' });
+			assert.deepStrictEqual(tokens[22], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.custom.css', 'punctuation.section.function.end.bracket.round.css'], value: ')' });
+		});
+
+		it('tokenizes if() function', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('.foo { color: if(style(--foo: 1), red, blue); }').tokens;
+			assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'support.function.misc.css'], value: 'if' });
+			assert.deepStrictEqual(tokens[9], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'punctuation.section.function.begin.bracket.round.css'], value: '(' });
+			assert.deepStrictEqual(tokens[10], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'meta.function.misc.css', 'support.function.misc.css'], value: 'style' });
+			assert.deepStrictEqual(tokens[11], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'meta.function.misc.css', 'punctuation.section.function.begin.bracket.round.css'], value: '(' });
+			assert.deepStrictEqual(tokens[12], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'meta.function.misc.css', 'variable.parameter.misc.css'], value: '--foo:' });
+			assert.deepStrictEqual(tokens[14], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'meta.function.misc.css', 'constant.numeric.css'], value: '1' });
+			assert.deepStrictEqual(tokens[15], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'meta.function.misc.css', 'punctuation.section.function.end.bracket.round.css'], value: ')' });
+			assert.deepStrictEqual(tokens[16], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'punctuation.separator.list.comma.css'], value: ',' });
+			assert.deepStrictEqual(tokens[18], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'support.constant.color.w3c-standard-color-name.css'], value: 'red' });
+			assert.deepStrictEqual(tokens[19], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'punctuation.separator.list.comma.css'], value: ',' });
+			assert.deepStrictEqual(tokens[21], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'support.constant.color.w3c-standard-color-name.css'], value: 'blue' });
+			assert.deepStrictEqual(tokens[22], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'punctuation.section.function.end.bracket.round.css'], value: ')' });
 		});
 	});
 });
