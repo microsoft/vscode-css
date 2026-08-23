@@ -501,9 +501,9 @@ describe('CSS grammar', function () {
 
 			it('marks a class invalid if it contains unescaped ASCII punctuation or symbols other than "-" and "_"', function () {
 				var tokens;
-				tokens = testGrammar.tokenizeLine('.B&W{').tokens;
+				tokens = testGrammar.tokenizeLine('.B!W{').tokens;
 				assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.selector.css', 'invalid.illegal.bad-identifier.css', 'punctuation.definition.entity.css'], value: '.' });
-				assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'invalid.illegal.bad-identifier.css'], value: 'B&W' });
+				assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.selector.css', 'invalid.illegal.bad-identifier.css'], value: 'B!W' });
 				assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.property-list.css', 'punctuation.section.property-list.begin.bracket.curly.css'], value: '{' });
 			});
 
