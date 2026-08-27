@@ -318,9 +318,9 @@
                     'name': 'support.function.document-rule.css'
                   '2':
                     'name': 'punctuation.section.function.begin.bracket.round.css'
-                'end': '\\)'
+                'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
                 'endCaptures':
-                  '0':
+                  '1':
                     'name': 'punctuation.section.function.end.bracket.round.css'
                 'name': 'meta.function.document-rule.css'
                 'patterns': [
@@ -645,6 +645,218 @@
         ]
       },
       {
+        # @container
+        'begin': '(?i)(?=@container([\\s({;]|/\\*|$))'
+        'end': '(?<=})(?!\\G)|(?=;)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)container'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.container.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.container.header.css'
+            'patterns': [
+              {
+                'include': '#container-query'
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.container.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.container.end.bracket.curly.css'
+            'name': 'meta.at-rule.container.body.css'
+            'patterns': [
+              {
+                'include': '#rule-list-innards'
+              }
+              {
+                'include': '$self'
+              }
+            ]
+          }
+        ]
+      }
+      {
+        # @scope
+        'begin': '(?i)(?=@scope([\\s({;]|/\\*|$))'
+        'end': '(?<=})(?!\\G)|(?=;)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)scope'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.scope.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.scope.header.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+              {
+                'match': '(?i)(?<=\\s|^|\\)|\\*/)to(?=\\s|\\(|/\\*|$)'
+                'name': 'keyword.operator.logical.scope.css'
+              }
+              {
+                'begin': '\\('
+                'beginCaptures':
+                  '0':
+                    'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+                # Bail out at a `{` that nothing closes later on the line, so
+                # an unclosed limit cannot swallow the rest of the stylesheet.
+                # `;` is deliberately not a bail-out: `<any-value>` permits a
+                # top-level one, and a prelude may span lines, so a `;` here is
+                # not evidence of a mistake.
+                'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+                'endCaptures':
+                  '1':
+                    'name': 'punctuation.definition.parameters.end.bracket.round.css'
+                'name': 'meta.scope.limit.css'
+                'patterns': [
+                  {
+                    'include': '#selector-innards'
+                  }
+                ]
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.scope.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.scope.end.bracket.curly.css'
+            'name': 'meta.at-rule.scope.body.css'
+            'patterns': [
+              {
+                'include': '#rule-list-innards'
+              }
+              {
+                'include': '$self'
+              }
+            ]
+          }
+        ]
+      }
+      {
+        # @starting-style
+        'begin': '(?i)(?=@starting-style([\\s{;]|/\\*|$))'
+        'end': '(?<=})(?!\\G)|(?=;)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)starting-style'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.starting-style.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.starting-style.header.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.starting-style.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.starting-style.end.bracket.curly.css'
+            'name': 'meta.at-rule.starting-style.body.css'
+            'patterns': [
+              {
+                'include': '#rule-list-innards'
+              }
+              {
+                'include': '$self'
+              }
+            ]
+          }
+        ]
+      }
+      {
+        # @property
+        'begin': '(?i)(?=@property([\\s{;]|/\\*|$))'
+        'end': '(?<=})(?!\\G)|(?=;)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)property'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.property.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.property.header.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+              {
+                'captures':
+                  '0':
+                    'patterns': [
+                      {
+                        'include': '#escapes'
+                      }
+                    ]
+                'match': '''(?x) (?<![\\w-])
+                  --
+                  (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]
+                    |\\\\(?:[0-9a-fA-F]{1,6}|.)
+                  )+
+                '''
+                'name': 'variable.css'
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.property-list.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.property-list.end.bracket.curly.css'
+            'name': 'meta.at-rule.property.body.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+              {
+                'include': '#escapes'
+              }
+              {
+                'match': '(?i)(?<![\\w-])(syntax|inherits|initial-value)(?![\\w-])'
+                'name': 'meta.property-name.css support.type.property-name.css'
+              }
+              {
+                'include': '#rule-list-innards'
+              }
+            ]
+          }
+        ]
+      }
+      {
         # Single line @custom-at-rule terminated with `;`, such as
         # @my-rule foo bar;
         'begin': '(?i)(?=@[\\w-]+[^;]+;\s*$)'
@@ -711,9 +923,9 @@
             'name': 'support.function.layer.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.layer.css'
         'patterns': [
@@ -853,17 +1065,83 @@
         'name': 'constant.character.escape.css'
       }
     ]
+  # A string inside an at-rule condition. Identical to `#string` except
+  # that it does not enter the multi-line newline-escape region: a
+  # condition region's `end` cannot be tested while that region is
+  # active, so a legal `"a{\` continuation would hold the prelude open
+  # for the rest of the stylesheet. Without it, a trailing backslash
+  # simply leaves the string open to its real closing quote.
+  'condition-string':
+    'patterns': [
+      {
+        'begin': '"'
+        'beginCaptures':
+          '0':
+            'name': 'punctuation.definition.string.begin.css'
+        'end': '"|(?<!\\\\)(?=$|\\n)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.definition.string.end.css'
+        'name': 'string.quoted.double.css'
+        'patterns': [
+          {
+            'include': '#condition-string-escapes'
+          }
+        ]
+      }
+      {
+        'begin': '\''
+        'beginCaptures':
+          '0':
+            'name': 'punctuation.definition.string.begin.css'
+        'end': '\'|(?<!\\\\)(?=$|\\n)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.definition.string.end.css'
+        'name': 'string.quoted.single.css'
+        'patterns': [
+          {
+            'include': '#condition-string-escapes'
+          }
+        ]
+      }
+    ]
+  'condition-string-escapes':
+    'patterns': [
+      {
+        'match': '\\\\[0-9a-fA-F]{1,6}'
+        'name': 'constant.character.escape.codepoint.css'
+      }
+      {
+        # A local copy of the newline escape in `#escapes`. It differs only
+        # in its `end`: the shared rule uses `^(?<!\\G)`, which cannot match
+        # while an at-rule condition is still open, so the region swallowed
+        # the rest of the stylesheet. A bare `^` always closes it at the
+        # start of the next line, which is the only behaviour a line
+        # continuation needs.
+        'begin': '\\\\$\\s*'
+        'end': '^'
+        'name': 'constant.character.escape.newline.css'
+      }
+      {
+        'match': '\\\\.'
+        'name': 'constant.character.escape.css'
+      }
+    ]
   'feature-query':
     'begin': '\\('
     'beginCaptures':
       '0':
         'name': 'punctuation.definition.condition.begin.bracket.round.css'
-    'end': '\\)'
+    'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
     'endCaptures':
-      '0':
+      '1':
         'name': 'punctuation.definition.condition.end.bracket.round.css'
     'name': 'meta.feature-query.css'
     'patterns': [
+      {
+        'include': '#condition-string'
+      }
       {
         'include': '#feature-query-operators'
       }
@@ -938,9 +1216,9 @@
             'name': 'support.function.calc.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.calc.css'
         'patterns': [
@@ -957,20 +1235,27 @@
       }
       # Colors
       {
-        'begin': '(?i)(?<![\\w-])(rgba?|rgb|hsla?|hsl|hwb|lab|oklab|lch|oklch|color)(\\()'
+        'begin': '(?i)(?<![\\w-])(rgba?|rgb|hsla?|hsl|hwb|lab|oklab|lch|oklch|color|color-mix|light-dark|contrast-color|device-cmyk)(\\()'
         'beginCaptures':
           '1':
             'name': 'support.function.misc.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.color.css'
         'patterns': [
           {
             'include': '#property-values'
+          }
+          # Color-interpolation keywords (`in oklch`, `longer hue`) and relative-color
+          # idents are not property values, so without this they would be left
+          # unscoped. Identifiers only, so separators like `/` stay unscoped.
+          {
+            'match': '(?i)(?<![\\w-])[a-z][\\w-]*(?![\\w(-])'
+            'name': 'variable.parameter.misc.css'
           }
         ]
       }
@@ -990,9 +1275,9 @@
             'name': 'support.function.gradient.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.gradient.css'
         'patterns': [
@@ -1013,9 +1298,9 @@
             'name': 'invalid.deprecated.gradient.function.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.gradient.invalid.deprecated.gradient.css'
         'patterns': [
@@ -1026,9 +1311,9 @@
                 'name': 'invalid.deprecated.function.css'
               '2':
                 'name': 'punctuation.section.function.begin.bracket.round.css'
-            'end': '\\)'
+            'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
             'endCaptures':
-              '0':
+              '1':
                 'name': 'punctuation.section.function.end.bracket.round.css'
             'patterns': [
               {
@@ -1045,10 +1330,12 @@
       {
         'begin': '''(?xi) (?<![\\w-])
           (annotation|attr|blur|brightness|character-variant|clamp|contrast|counters?
-          |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate|color-mix
+          |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate
           |image-set|invert|local|max|min|minmax|opacity|ornaments|repeat|saturate|sepia
           |styleset|stylistic|swash|symbols
-          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign|if|style)
+          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign|if|style
+          |mod|rem|round|calc-size|progress
+          |palette-mix|paint|scroll|view|toggle|sibling-index|sibling-count)
           (\\()
         '''
         'beginCaptures':
@@ -1056,9 +1343,9 @@
             'name': 'support.function.misc.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.misc.css'
         'patterns': [
@@ -1086,9 +1373,9 @@
             'name': 'support.function.shape.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.shape.css'
         'patterns': [
@@ -1109,9 +1396,9 @@
             'name': 'support.function.timing-function.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.timing-function.css'
         'patterns': [
@@ -1139,9 +1426,9 @@
             'name': 'support.function.transform.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'patterns': [
           {
@@ -1169,12 +1456,127 @@
             'name': 'support.function.custom.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        # Not guarded, for the same reason as `var()`: a custom function call is
+        # a declaration value, and `<declaration-value>` admits a balanced curly
+        # block that legally spans lines, as in `--x: --foo({ ... });`. The legal
+        # `--foo({` and the malformed `--foo(a{` are indistinguishable within a
+        # single line, so recovering here would cost legal CSS.
+        'end': '(\\))'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.custom.css'
         'patterns': [
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
+      # Environment variables
+      {
+        'begin': '(?i)(?<![\\w-])(env)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.misc.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.env.css'
+        'patterns': [
+          {
+            # The environment variable name is only the first argument, so it
+            # is matched as this region's `end`: the region skips whatever
+            # comments and line breaks precede the name, scopes it, and then
+            # closes, which stops a second identifier (`env(--a --b)`) from
+            # being scoped as a name too.
+            # The `begin` and the region's zero-width `end` alternative are
+            # both zero-width, so the characters the region can end on must be
+            # excluded from the ones it may begin on: otherwise `env(;` pushes
+            # and pops without advancing, which makes the tokenizer abandon the
+            # line and leak this rule to end-of-file.
+            'begin': '\\G(?![,;{})])'
+            'end': '''(?xi)
+              (?<![\\\\\\w-])                   # Not mid-identifier, not mid-escape
+              (?: ( safe-area-inset-(?:top|right|bottom|left)
+                  | safe-area-max-inset-(?:top|right|bottom|left)
+                  | titlebar-area-(?:x|y|width|height)
+                  | keyboard-inset-(?:top|right|bottom|left|width|height)
+                  | viewport-segment-(?:top|right|bottom|left|width|height)
+                  | preferred-text-scale
+                  )
+                  (?![\\w-])
+                | ( (?> (?:[-a-zA-Z_]    | [^\\x00-\\x7F]        # First letter
+                          |\\\\(?:[0-9a-fA-F]{1,6}[ \\t]?|[^\\n])
+                        )
+                        (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]        # Remainder
+                          |\\\\(?:[0-9a-fA-F]{1,6}[ \\t]?|[^\\n])
+                        )*
+                    )
+                    (?!\\()                    # A function is not a name
+                  )
+              )
+              | (?=[,;{})])                    # Malformed: give up on a name
+            '''
+            'endCaptures':
+              '1':
+                'name': 'support.constant.property-value.css'
+              '2':
+                'name': 'variable.argument.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+              {
+                'include': '#numeric-values'    # Indices, e.g. env(viewport-segment-width 0 0)
+              }
+              {
+                'include': '#property-values'   # Anything that is not a name: strings,
+              }                                 # nested functions, malformed arguments
+            ]
+          }
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
+      # Anchor positioning
+      {
+        'begin': '(?i)(?<![\\w-])(anchor|anchor-size)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.misc.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.anchor.css'
+        'patterns': [
+          {
+            'name': 'variable.argument.css'
+            'match': '''(?x)
+              --
+              (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+              (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+                |\\\\(?:[0-9a-fA-F]{1,6}|.)
+              )*
+            '''
+          }
+          {
+            'match': '''(?xi) (?<![\\w-])
+              (?: top|right|bottom|left|center|start|end|self-start|self-end
+                | inside|outside                    # <anchor-side>
+                | width|height|block|inline
+                | self-block|self-inline            # <anchor-size>
+              )
+              (?![\\w-])
+            '''
+            'name': 'support.constant.property-value.css'
+          }
           {
             'include': '#property-values'
           }
@@ -1188,9 +1590,12 @@
             'name': 'support.function.misc.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        # No `{` bail-out here: a `var()` fallback may legally contain a
+        # balanced curly block spanning lines (`var(--x, { color: red })`),
+        # and `main` already recovers an unclosed `var(` no better than this.
+        'end': '(\\))'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.variable.css'
         'patterns': [
@@ -1215,9 +1620,9 @@
     'beginCaptures':
       '0':
         'name': 'punctuation.definition.function.begin.bracket.round.css'
-    'end': '\\)'
+    'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
     'endCaptures':
-      '0':
+      '1':
         'name': 'punctuation.definition.function.end.bracket.round.css'
     'patterns': [
       {
@@ -1242,9 +1647,9 @@
             'name': 'punctuation.definition.entity.css'
           '3':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'patterns': [
           {
@@ -1272,9 +1677,9 @@
             'name': 'punctuation.definition.entity.css'
           '3':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'patterns': [
           {
@@ -1286,7 +1691,7 @@
             'beginCaptures':
               '0':
                 'name': 'punctuation.definition.string.begin.css'
-            'end': '"'
+            'end': '"|(?<!\\\\)(?=$|\\n)'
             'endCaptures':
               '0':
                 'name': 'punctuation.definition.string.end.css'
@@ -1306,7 +1711,7 @@
             'beginCaptures':
               '0':
                 'name': 'punctuation.definition.string.begin.css'
-            'end': "'"
+            'end': "'|(?<!\\\\)(?=$|\\n)"
             'endCaptures':
               '0':
                 'name': 'punctuation.definition.string.end.css'
@@ -1328,7 +1733,7 @@
       }
       {
         # Logical / Selector-based
-        'begin': '(?i)((:)(?:not|has|matches|where|is))(\\()'
+        'begin': '(?i)((:)(?:not|has|matches|where|is|host|host-context|current))(\\()'
         'beginCaptures':
           '1':
             'name': 'entity.other.attribute-name.pseudo-class.css'
@@ -1336,9 +1741,9 @@
             'name': 'punctuation.definition.entity.css'
           '3':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'patterns': [
           {
@@ -1356,9 +1761,9 @@
             'name': 'punctuation.definition.entity.css'
           '3':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'patterns': [
           {
@@ -1368,6 +1773,182 @@
           {
             'match': '(?i)even|odd'
             'name': 'support.constant.parity.css'
+          }
+          {
+            # `of <selector>` syntax, e.g. :nth-child(2 of .visible)
+            'begin': '(?i)(?<=[\\s)])(of)(?=[\\s(]|$)'
+            'beginCaptures':
+              '1':
+                'name': 'keyword.operator.logical.of.css'
+            'end': '(?=\\)|\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+            'patterns': [
+              {
+                'include': '#selector-innards'
+              }
+            ]
+          }
+        ]
+      }
+      {
+        # :state() takes a custom identifier, not a selector list
+        'begin': '(?i)((:)state)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-class.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'captures':
+              '0':
+                'patterns': [
+                  {
+                    'include': '#escapes'
+                  }
+                ]
+            'match': '''(?x)
+              (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+              (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+                |\\\\(?:[0-9a-fA-F]{1,6}|.)
+              )*
+            '''
+            'name': 'variable.parameter.state-name.css'
+          }
+          {
+            'include': '#comment-block'
+          }
+        ]
+      }
+    ]
+  'functional-pseudo-elements':
+    'patterns': [
+      {
+        # ::part() and ::highlight() take custom identifiers
+        'begin': '(?i)((::)(?:part|highlight))(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'captures':
+              '0':
+                'patterns': [
+                  {
+                    'include': '#escapes'
+                  }
+                ]
+            'match': '''(?x)
+              (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+              (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+                |\\\\(?:[0-9a-fA-F]{1,6}|.)
+              )*
+            '''
+            'name': 'variable.parameter.pseudo-element.css'
+          }
+        ]
+      }
+      {
+        # View-transition pseudo-elements take a custom identifier or wildcard
+        'begin': '(?i)((::)(?:view-transition-group|view-transition-image-pair|view-transition-new|view-transition-old))(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': '\\*'
+            'name': 'entity.name.tag.wildcard.css'
+          }
+          {
+            'captures':
+              '0':
+                'patterns': [
+                  {
+                    'include': '#escapes'
+                  }
+                ]
+            'match': '''(?x)
+              (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+              (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+                |\\\\(?:[0-9a-fA-F]{1,6}|.)
+              )*
+            '''
+            'name': 'variable.parameter.pseudo-element.css'
+          }
+        ]
+      }
+      {
+        # ::scroll-button() takes a physical or logical direction
+        'begin': '(?i)((::)scroll-button)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': '\\*'
+            'name': 'entity.name.tag.wildcard.css'
+          }
+          {
+            'match': '(?i)(?<![\\w-])(?:block-start|block-end|inline-start|inline-end|up|down|left|right|prev|next)(?![\\w-])'
+            'name': 'support.constant.property-value.css'
+          }
+        ]
+      }
+      {
+        # ::slotted() takes a compound selector
+        'begin': '(?i)((::)slotted)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#selector-innards'
           }
         ]
       }
@@ -1393,12 +1974,33 @@
             | color-index
             | monochrome
             | resolution
+            | horizontal-viewport-segments
+            | vertical-viewport-segments
           )
           | grid                    # Discrete features
           | scan
           | orientation
           | display-mode
           | hover
+          | any-hover               # Interaction (Media Queries 4)
+          | pointer
+          | any-pointer
+          | update
+          | overflow-block
+          | overflow-inline
+          | prefers-color-scheme    # User preference (Media Queries 5)
+          | prefers-contrast
+          | prefers-reduced-motion
+          | prefers-reduced-transparency
+          | prefers-reduced-data
+          | forced-colors
+          | inverted-colors
+          | dynamic-range
+          | video-dynamic-range
+          | scripting
+          | color-gamut
+          | environment-blending
+          | nav-controls
         )
         |
         # Deprecated features
@@ -1458,11 +2060,328 @@
         | standalone
         | minimal-ui
         | browser
+        | picture-in-picture
         | hover
+        | none                      # Interaction / preference values
+        | coarse
+        | fine
+        | slow
+        | fast
+        | light                     # prefers-color-scheme
+        | dark
+        | no-preference             # prefers-* neutral value
+        | reduce                    # prefers-reduced-*
+        | more                      # prefers-contrast
+        | less
+        | custom
+        | active                    # forced-colors / scripting
+        | inactive
+        | enabled
+        | initial-only
+        | srgb                      # color-gamut
+        | p3
+        | rec2020
+        | standard                  # dynamic-range
+        | high
+        | scroll                    # overflow-block / overflow-inline
+        | paged
+        | inverted                  # inverted-colors
+        | back                      # nav-controls
+        | opaque                    # environment-blending
+        | additive
+        | subtractive
       )
       (?=\\s|\\)|$)
     '''
     'name': 'support.constant.property-value.css'
+  'container-query':
+    'begin': '\\G'
+    'end': '(?=\\s*[{;])'
+    'patterns': [
+      {
+        'include': '#comment-block'
+      }
+      {
+        'include': '#escapes'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\))(and|or|not)(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.$1.container.css'
+      }
+      {
+        # style() queries, e.g. @container style(--theme: dark)
+        'begin': '(?i)(?<![\\w-])(style)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.style.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        # Bail out at a `{` that nothing closes later on the line, so an
+        # unclosed query cannot swallow the rest of the stylesheet. `;` is
+        # deliberately not a bail-out: `<any-value>` permits a top-level one,
+        # and a prelude may span lines, so a `;` here is not evidence of a
+        # mistake.
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.style.css'
+        'patterns': [
+          {
+            # Local copy of the declaration-value region from #rule-list-innards,
+            # which ends only at `;`, `}` or `)`. A `{` that truncates the query
+            # therefore stays inside the value there, hiding it from the
+            # enclosing bail-out lookahead, which can then only fire at end of
+            # line -- and vscode-textmate pops one rule per line boundary, so
+            # the following rule is left inside the unclosed query. This copy
+            # releases at that `{` instead. The same lexical bail-out applies,
+            # so a balanced `{...}` block in a custom property value, which
+            # #property-values handles, is still left intact.
+            'begin': '(:)\\s*'
+            'beginCaptures':
+              '1':
+                'name': 'punctuation.separator.key-value.css'
+            'end': '\\s*(?=[})])|\\s*(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+            'contentName': 'meta.property-value.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+              {
+                'include': '#property-values'
+              }
+            ]
+          }
+          {
+            'include': '#rule-list-innards'
+          }
+        ]
+      }
+      {
+        # Scroll-state queries, e.g. @container scroll-state(stuck: top)
+        'begin': '(?i)(?<![\\w-])(scroll-state)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.scroll-state.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        # Bail out at a `{` that nothing closes later on the line, so an
+        # unclosed query cannot swallow the rest of the stylesheet. `;` is
+        # deliberately not a bail-out: `<any-value>` permits a top-level one,
+        # and a prelude may span lines, so a `;` here is not evidence of a
+        # mistake.
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.scroll-state.css'
+        'patterns': [
+          {
+            'include': '#scroll-state-condition'
+          }
+        ]
+      }
+      {
+        'begin': '\\('
+        'beginCaptures':
+          '0':
+            'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+        # Bail out at a `{` that nothing closes later on the line, so an
+        # unclosed query cannot swallow the rest of the stylesheet. `;` is
+        # deliberately not a bail-out: `<any-value>` permits a top-level one,
+        # and a prelude may span lines, so a `;` here is not evidence of a
+        # mistake.
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.definition.parameters.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#size-container-features'
+          }
+          {
+            'match': '(?i)(?<=\\s|^|\\*/|\\()(and|or|not)(?=\\s|\\(|/\\*|$)'
+            'name': 'keyword.operator.logical.$1.container.css'
+          }
+          {
+            'match': ':'
+            'name': 'punctuation.separator.key-value.css'
+          }
+          {
+            'match': '>=|<=|=|<|>'
+            'name': 'keyword.operator.comparison.css'
+          }
+          {
+            'captures':
+              '1':
+                'name': 'constant.numeric.css'
+              '2':
+                'name': 'keyword.operator.arithmetic.css'
+              '3':
+                'name': 'constant.numeric.css'
+            'match': '(\\d+)\\s*(/)\\s*(\\d+)'
+            'name': 'meta.ratio.css'
+          }
+          {
+            'include': '#media-feature-keywords'
+          }
+          {
+            'include': '#numeric-values'
+          }
+          {
+            'include': '#comment-block'
+          }
+          {
+            'include': '#functions'
+          }
+        ]
+      }
+      {
+        # Optional container name preceding the query, e.g. @container card (…)
+        'captures':
+          '0':
+            'patterns': [
+              {
+                'include': '#escapes'
+              }
+            ]
+        'match': '''(?xi)
+          (?<=^|\\s|\\*/)
+          (?!(?:none|and|or|not|style)(?![\\w-])) # Not a reserved keyword or style() query
+          (?:[-a-zA-Z_]    | [^\\x00-\\x7F])     # First letter
+          (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+            |\\\\(?:[0-9a-fA-F]{1,6}|.)
+          )*
+          (?![\\w(-])                            # Not a function call
+        '''
+        'name': 'variable.parameter.container-name.css'
+      }
+    ]
+  'size-container-features':
+    'captures':
+      '1':
+        'name': 'support.type.property-name.container.css'
+    'match': '''(?xi)
+      (?<=^|\\s|\\(|\\*/)           # Preceded by whitespace, bracket or comment
+      (
+        (?:min-|max-)?              # Range features
+        (?: width
+          | height
+          | inline-size
+          | block-size
+          | aspect-ratio
+        )
+        | orientation               # Discrete features
+      )
+      (?=\\s|$|[><:=]|\\)|/\\*)     # Terminates cleanly
+    '''
+  'scroll-state-condition':
+    'patterns': [
+      {
+        'include': '#comment-block'
+      }
+      {
+        'begin': '\\('
+        'beginCaptures':
+          '0':
+            'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
+        'endCaptures':
+          '1':
+            'name': 'punctuation.definition.parameters.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#scroll-state-condition'
+          }
+        ]
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\()(and|or|not)(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.$1.container.css'
+      }
+      {
+        'begin': '(?i)(?<![\\w-])(stuck)(?=\\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*:)'
+        'beginCaptures':
+          '1':
+            'name': 'support.type.property-name.container.css'
+        # A `{` that nothing closes later on the line also releases the
+        # condition, so an unclosed scroll-state() query cannot leak its scope
+        # into the following rule.
+        'end': '(?=\\)|\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$|(?:\\s+|(?<=\\*/))(?i:and|or)(?=\\s|\\()|$)'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': ':'
+            'name': 'punctuation.separator.key-value.css'
+          }
+          {
+            'match': '(?i)(?<![\\w-])(?:none|top|right|bottom|left|block-start|inline-start|block-end|inline-end)(?![\\w-])'
+            'name': 'support.constant.property-value.css'
+          }
+        ]
+      }
+      {
+        'begin': '(?i)(?<![\\w-])(snapped)(?=\\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*:)'
+        'beginCaptures':
+          '1':
+            'name': 'support.type.property-name.container.css'
+        # A `{` that nothing closes later on the line also releases the
+        # condition, so an unclosed scroll-state() query cannot leak its scope
+        # into the following rule.
+        'end': '(?=\\)|\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$|(?:\\s+|(?<=\\*/))(?i:and|or)(?=\\s|\\()|$)'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': ':'
+            'name': 'punctuation.separator.key-value.css'
+          }
+          {
+            'match': '(?i)(?<![\\w-])(?:none|x|y|block|inline|both)(?![\\w-])'
+            'name': 'support.constant.property-value.css'
+          }
+        ]
+      }
+      {
+        'begin': '(?i)(?<![\\w-])(scrollable|scrolled)(?=\\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*:)'
+        'beginCaptures':
+          '1':
+            'name': 'support.type.property-name.container.css'
+        # A `{` that nothing closes later on the line also releases the
+        # condition, so an unclosed scroll-state() query cannot leak its scope
+        # into the following rule.
+        'end': '(?=\\)|\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$|(?:\\s+|(?<=\\*/))(?i:and|or)(?=\\s|\\()|$)'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': ':'
+            'name': 'punctuation.separator.key-value.css'
+          }
+          {
+            'match': '(?i)(?<![\\w-])(?:none|top|right|bottom|left|block-start|inline-start|block-end|inline-end|x|y|block|inline)(?![\\w-])'
+            'name': 'support.constant.property-value.css'
+          }
+        ]
+      }
+      {
+        # Scroll-state features are also valid in boolean context.
+        'match': '''(?xi)
+          (?<![\\w-])
+          (stuck|snapped|scrollable|scrolled)
+          (?![\\w-])
+          (?=
+            \\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*
+            (?:\\)|(?:and|or)(?=\\s|\\()|$)
+          )
+        '''
+        'name': 'support.type.property-name.container.css'
+      }
+    ]
   'media-query':
     'begin': '\\G'
     'end': '(?=\\s*[{;])'
@@ -1496,11 +2415,14 @@
         'beginCaptures':
           '0':
             'name': 'punctuation.definition.parameters.begin.bracket.round.css'
-        'end': '\\)'
+        'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.definition.parameters.end.bracket.round.css'
         'patterns': [
+          {
+            'include': '#condition-string'
+          }
           {
             'include': '#media-features'
           }
@@ -1731,6 +2653,22 @@
             | translate|unicode-bidi|unicode-range|user-select|user-zoom|vertical-align|visibility|white-space|widows|width|will-change
             | word-break|word-spacing|word-wrap|writing-mode|z-index|zoom
 
+            # Anchor positioning, scroll-driven animations, view transitions and other additions
+            | anchor-name|anchor-scope|position-anchor|position-area|position-try|position-try-fallbacks|position-try-order
+            | position-visibility
+            | animation-composition
+            | scroll-timeline|scroll-timeline-axis|scroll-timeline-name|timeline-scope
+            | view-timeline|view-timeline-axis|view-timeline-inset|view-timeline-name
+            | view-transition-class|view-transition-name|view-transition-group
+            | contain-intrinsic-block-size|contain-intrinsic-height|contain-intrinsic-inline-size
+            | contain-intrinsic-size|contain-intrinsic-width|content-visibility
+            | field-sizing|forced-color-adjust|hyphenate-limit-chars|interpolate-size
+            | margin-trim|math-depth|math-shift|math-style|overlay
+            | ruby-overhang|scroll-initial-target|scroll-marker-group
+            | text-autospace|text-box|text-box-edge|text-box-trim|text-spacing-trim|text-wrap
+            | text-wrap-mode|text-wrap-style|white-space-collapse|word-space-transform
+            | reading-flow|reading-order|dynamic-range-limit|corner-shape
+
             # SVG attributes
             | alignment-baseline|baseline-shift|clip-rule|color-interpolation|color-interpolation-filters|color-profile
             | color-rendering|cx|cy|dominant-baseline|enable-background|fill|fill-opacity|fill-rule|flood-color|flood-opacity
@@ -1755,13 +2693,13 @@
             | orient|origin|overflow-style|overhang|pack|page|page-policy|pause|pause-after|pause-before|phonemes|pitch|pitch-range
             | play-count|play-during|play-state|point|presentation|presentation-level|profile|property|punctuation|punctuation-trim
             | radius|rate|rendering-intent|repeat|replace|reset|resolution|resource|respond-to|rest|rest-after|rest-before|richness
-            | right-color|right-style|right-width|role|rotation|rotation-point|rows|ruby|ruby-overhang|ruby-span|rule|rule-color
+            | right-color|right-style|right-width|role|rotation|rotation-point|rows|ruby|ruby-span|rule|rule-color
             | rule-style|rule-width|shadow|size|size-adjust|sizing|space|space-collapse|spacing|span|speak|speak-header|speak-numeral
             | speak-punctuation|speech|speech-rate|speed|stacking|stacking-ruby|stacking-shift|stacking-strategy|stress|stretch
             | string-set|style|style-image|style-position|style-type|target|target-name|target-new|target-position|text|text-height
-            | text-justify|text-outline|text-replace|text-wrap|timing-function|top-color|top-left-radius|top-right-radius|top-style
+            | text-justify|text-outline|text-replace|timing-function|top-color|top-left-radius|top-right-radius|top-style
             | top-width|trim|unicode|up|user-select|variant|voice|voice-balance|voice-duration|voice-family|voice-pitch|voice-pitch-range
-            | voice-rate|voice-stress|voice-volume|volume|weight|white|white-space-collapse|word|wrap
+            | voice-rate|voice-stress|voice-volume|volume|weight|white|word|wrap
           )
           (?![\\w-])
         '''
@@ -1829,11 +2767,12 @@
         'name': 'invalid.illegal.colon.css'
     'match': '''(?xi)
       (:)(:*)
-      (?: active|any-link|checked|default|disabled|empty|enabled|first
-        | (?:first|last|only)-(?:child|of-type)|focus|focus-visible|focus-within|fullscreen|host|hover
-        | in-range|indeterminate|invalid|left|link|optional|out-of-range
-        | read-only|read-write|required|right|root|scope|target|unresolved
-        | valid|visited
+      (?: active|any-link|autofill|blank|buffering|checked|current|default|defined|disabled|empty|enabled|first
+        | (?:first|last|only)-(?:child|of-type)|focus|focus-visible|focus-within|fullscreen|future|host|hover
+        | in-range|indeterminate|invalid|left|link|local-link|modal|muted|open|optional|out-of-range
+        | past|paused|picture-in-picture|placeholder-shown|playing|popover-open
+        | read-only|read-write|required|right|root|scope|seeking|stalled|target|target-after|target-before|target-current
+        | unresolved|user-invalid|user-valid|valid|visited|volume-locked
       )(?![\\w-]|\\s*[;}])
     '''
     'name': 'entity.other.attribute-name.pseudo-class.css'
@@ -1858,13 +2797,22 @@
         |
         (::)                        # Double-colon only
         (?: backdrop
+          | checkmark
+          | column
           | content
+          | details-content
+          | file-selector-button
           | grammar-error
           | marker
+          | picker-icon
           | placeholder
+          | scroll-marker
+          | scroll-marker-group
           | selection
           | shadow
           | spelling-error
+          | target-text
+          | view-transition
         )
       )
       (?![\\w-]|\\s*[;}])
@@ -2252,13 +3200,16 @@
         ]
       }
       {
+        'include': '#functional-pseudo-classes'
+      }
+      {
         'include': '#pseudo-classes'
       }
       {
-        'include': '#pseudo-elements'
+        'include': '#functional-pseudo-elements'
       }
       {
-        'include': '#functional-pseudo-classes'
+        'include': '#pseudo-elements'
       }
       # Custom HTML elements
       {
@@ -2510,9 +3461,9 @@
         'name': 'support.function.url.css'
       '2':
         'name': 'punctuation.section.function.begin.bracket.round.css'
-    'end': '\\)'
+    'end': '(\\))|(?=\\{(?:[^)/"\\x27\\\\]|/(?!\\*)|/\\*(?:[^*]|\\*(?!/))*\\*/|/\\*(?:[^*]|\\*(?!/))*$|"(?:[^"\\\\]|\\\\.)*"|"(?:[^"\\\\]|\\\\.)*(?:\\\\)?$|\\x27(?:[^\\x27\\\\]|\\\\.)*\\x27|\\x27(?:[^\\x27\\\\]|\\\\.)*(?:\\\\)?$|\\\\.|\\\\$)*$)'
     'endCaptures':
-      '0':
+      '1':
         'name': 'punctuation.section.function.end.bracket.round.css'
     'name': 'meta.function.url.css'
     'patterns': [
