@@ -17,6 +17,10 @@
 '''
 'patterns': [
   {
+    # Allow bare property declarations (CSS variables) at top level for code blocks
+    'include': '#rule-list-innards'
+  }
+  {
     'include': '#comment-block'
   }
   {
