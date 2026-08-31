@@ -3631,6 +3631,20 @@ describe('CSS grammar', function () {
 	});
 
 	describe("performance regressions", function () {
+		it("tokenizes long function-like container names in linear time", function () {
+			var start;
+			start = Date.now();
+			testGrammar.tokenizeLine('@container ' + 'a'.repeat(20000) + '() {');
+			assert.ok(Date.now() - start < 5000);
+		});
+
+		it("tokenizes long function-like color arguments in linear time", function () {
+			var start;
+			start = Date.now();
+			testGrammar.tokenizeLine('a { color: rgb(' + 'a'.repeat(20000) + '() }');
+			assert.ok(Date.now() - start < 5000);
+		});
+
 		it("does not hang when tokenizing invalid input preceding an equals sign", function () {
 			var start;
 			start = Date.now();
@@ -3862,6 +3876,500 @@ describe('CSS grammar', function () {
 			assert.deepStrictEqual(tokens[19], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'punctuation.separator.list.comma.css'], value: ',' });
 			assert.deepStrictEqual(tokens[21], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'support.constant.color.w3c-standard-color-name.css'], value: 'blue' });
 			assert.deepStrictEqual(tokens[22], { scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'punctuation.section.function.end.bracket.round.css'], value: ')' });
+		});
+	});
+	describe('unterminated prelude and function recovery', function () {
+		it('recovers from an unclosed parenthesis in a prelude', function () {
+			// An unclosed parenthesis used to leak the at-rule header scope to
+			// the end of the stylesheet. The `end` pattern now also bails out at
+			// a `{`. That is only sound where a `{` cannot appear in legal CSS,
+			// so `@scope` preludes, value functions and functional
+			// pseudo-classes carry the bail-out. `@media`, `@supports` and
+			// `@container` conditions deliberately do not: `<general-enclosed>`
+			// is `( <any-value>? )`, and `<any-value>` admits a balanced
+			// `{...}` block, so bailing there would mis-scope legal CSS.
+			[
+				"@scope (.a{",
+				"@scope (:is(.b){",
+				"@scope (.a) to (.b{",
+				"a:is(.b{",
+				"a:nth-child(2n{"
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				var token = lines[1].find(t => t.value === 'after');
+				assert.ok(token, prelude + ' -> .after missing');
+				token.scopes.forEach(function (scope) {
+					assert.ok(!['header', 'meta.function', 'scope.limit'].some(l => scope.includes(l)),
+						prelude + ' -> leaked ' + scope);
+				});
+			});
+		});
+
+		it('still scopes a well-formed prelude and its closing parenthesis', function () {
+			// The bail-out must not fire on legal CSS. Each of these closes its
+			// own parenthesis, so the closing `)` keeps its punctuation scope
+			// and the following rule is still a selector.
+			[
+				'@media (min-width: 40em) { .a { color: red; } }',
+				'@supports (display: grid) { .a { color: red; } }',
+				'@media screen and (min-width: 40em) { .a { color: red; } }',
+				'@supports not (display: grid) { .a { color: red; } }'
+			].forEach(function (source) {
+				var tokens = testGrammar.tokenizeLines(source)[0];
+				var close = tokens.find(t => t.value === ')');
+				assert.ok(close, source + ' -> no closing parenthesis token');
+				assert.ok(close.scopes.some(s => s.startsWith('punctuation.definition.')
+					|| s.startsWith('punctuation.section.')),
+					source + ' -> closing parenthesis lost its scope');
+				assert.ok(tokens.some(t => t.value === 'red'
+					&& t.scopes.some(s => s.includes('support.constant.color'))),
+					source + ' -> body declaration not scoped');
+				tokens.forEach(function (t) {
+					if (t.value !== 'red') return;
+					t.scopes.forEach(function (scope) {
+						assert.ok(!scope.includes('header'), source + ' -> header leaked to body');
+					});
+				});
+			});
+		});
+
+		it('keeps a var() fallback that legally contains a curly block intact', function () {
+			// `<declaration-value>` admits a balanced block, so `var()` is
+			// deliberately left without the `{` bail-out: protecting this legal
+			// value is worth losing recovery on `var(--y{`, which `origin/main`
+			// does not recover either.
+			var lines = testGrammar.tokenizeLines('a {\n  --t: var(--fb, {\n    color: red;\n  });\n}');
+			assert.deepStrictEqual(lines[1].find(t => t.value === '{').scopes, [
+				'source.css',
+				'meta.property-list.css',
+				'meta.property-value.css',
+				'meta.function.variable.css',
+				'punctuation.section.group.begin.bracket.curly.css'
+			]);
+			assert.deepStrictEqual(lines[3].find(t => t.value === ')').scopes, [
+				'source.css',
+				'meta.property-list.css',
+				'meta.property-value.css',
+				'meta.function.variable.css',
+				'punctuation.section.function.end.bracket.round.css'
+			]);
+		});
+
+		it('keeps a custom function argument that legally spans a curly block intact', function () {
+			// Same trade-off as `var()`. A custom function call is a declaration
+			// value, so a balanced block inside it may legally span lines.
+			// `origin/main` scopes this correctly and the guard had regressed it.
+			var lines = testGrammar.tokenizeLines('.foo {\n  --x: --foo({\n    color: red;\n  });\n}');
+			assert.deepStrictEqual(lines[1].find(t => t.value === '{').scopes, [
+				'source.css',
+				'meta.property-list.css',
+				'meta.property-value.css',
+				'meta.function.custom.css',
+				'punctuation.section.group.begin.bracket.curly.css'
+			]);
+			assert.deepStrictEqual(lines[3].find(t => t.value === ')').scopes, [
+				'source.css',
+				'meta.property-list.css',
+				'meta.property-value.css',
+				'meta.function.custom.css',
+				'punctuation.section.function.end.bracket.round.css'
+			]);
+		});
+
+		it('keeps a brace inside a legal general-enclosed string out of the body', function () {
+			// `<general-enclosed>` accepts `<any-value>`, so a quoted string
+			// containing `{` is legal. The bail-out only inspects text from
+			// the candidate brace onwards, so without a string rule active it
+			// read the closing quote as an opening one, took the real `)` for
+			// shielded, and opened the body at the brace inside the string.
+			[
+				['@media (future: "a{b") {', 'meta.at-rule.media.header.css'],
+				['@supports (future "a{b") {', 'meta.at-rule.supports.header.css']
+			].forEach(function (pair) {
+				var line = pair[0], header = pair[1];
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				var index = line.indexOf('{');
+				var offset = 0, token = null;
+				tokens.forEach(function (t) {
+					if (token === null && offset + t.value.length > index) {
+						token = t;
+					}
+					offset += t.value.length;
+				});
+				assert.ok(token.scopes.includes(header),
+					line + ' -> brace inside string left ' + header);
+				assert.ok(token.scopes.some(function (s) { return s.includes('string.quoted'); }),
+					line + ' -> brace inside string is not scoped as a string');
+			});
+		});
+
+		it('releases a line-continuation string in an at-rule condition', function () {
+			// A legal `<general-enclosed>` string may end a line with an escaped
+			// newline. The shared `#string` rule handles that by entering a
+			// multi-line `constant.character.escape.newline.css` region whose
+			// `end` is `^(?<!\\G)`, which cannot match while the condition's own
+			// `end` is never reached -- so the region swallowed the rest of the
+			// stylesheet. Condition regions therefore use `#condition-string`,
+			// which omits that sub-rule: a trailing backslash simply leaves the
+			// string open until its real closing quote on the next line.
+			// `@supports` routes the same string through the shared
+			// property-value context instead, where `origin/main` swallows it
+			// too, so that case is left at parity rather than fixed here.
+			[
+				'@media (future: "a{\\\n b") {\n.after { color: red; }',
+				"@media (future: 'a{\\\n b') {\n.after { color: red; }"
+			].forEach(function (src) {
+				var lines = testGrammar.tokenizeLines(src);
+				var last = lines[lines.length - 1];
+				var colour = last.find(function (t) { return t.value === 'color'; });
+				assert.ok(colour, src + ' -> no `color` token on the trailing rule');
+				assert.ok(colour.scopes.includes('support.type.property-name.css'),
+					src + ' -> continuation escaped the condition: ' + colour.scopes.join(' '));
+				assert.ok(!last.some(function (t) {
+					return t.scopes.some(function (sc) {
+						return sc.includes('escape.newline') || sc.includes('feature-query');
+					});
+				}), src + ' -> escape/feature-query region still open on the trailing rule');
+			});
+		});
+
+		it('bounds an unterminated layer() in an @import prelude', function () {
+			// `@import` legitimately runs to its `;`, as on `origin/main`, but
+			// the `layer()` region must not carry its own function scopes past
+			// the brace.
+			var lines = testGrammar.tokenizeLines('@import layer(base{\n.after { color: red; }');
+			lines[1].forEach(function (token) {
+				token.scopes.forEach(function (scope) {
+					assert.ok(!scope.includes('meta.function'),
+						JSON.stringify(token.value) + ' leaked ' + scope);
+				});
+			});
+		});
+	});
+	describe('feature coverage', function () {
+		it('does not match scroll-state feature name prefixes', function () {
+			['stuckand', 'snappedor'].forEach(function (identifier) {
+				var tokens = testGrammar.tokenizeLine('@container scroll-state(' + identifier + ') {').tokens;
+				assert.ok(!tokens.find(x => x.scopes.includes('support.type.property-name.container.css')), identifier);
+			});
+		});
+		it('does not tokenize reserved container names', function () {
+			var tokens = testGrammar.tokenizeLine('@container none (width > 10px) {').tokens;
+			assert.ok(!tokens.find(x => x.value === 'none' && x.scopes.includes('variable.parameter.container-name.css')));
+		});
+		it('recovers from semicolon-terminated block at-rules', function () {
+			[
+				'@container (width > 1px);',
+				'@container;',
+				'@scope (.x);',
+				'@scope;',
+				'@starting-style ;',
+				'@starting-style;',
+				'@property --theme;',
+				'@property;'
+			].forEach(function (atRule) {
+				var lines = testGrammar.tokenizeLines(atRule + '\n.after { color: red; }');
+				assert.deepStrictEqual(lines[1].find(x => x.value === 'after').scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], atRule);
+			});
+		});
+		it('recovers from an unclosed brace nested one level deeper than the function call', function () {
+			// These two sites survived an earlier mutation campaign only
+			// because nothing exercised a bare parenthesised group inside a
+			// function. They are load-bearing, not redundant.
+			[
+				'@container (width > calc((10px{',
+				'a { background: -webkit-gradient(linear, left top, from(red{'
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				lines[1].forEach(function (token) {
+					token.scopes.forEach(function (scope) {
+						assert.ok(!scope.includes('meta.function'),
+							prelude + ' -> ' + JSON.stringify(token.value) + ' leaked ' + scope);
+					});
+				});
+			});
+		});
+		it('recovers from an unclosed condition in every region the base grammar recovers in', function () {
+			// The base grammar has no dedicated @container rule, so its generic
+			// at-rule header ends at the brace and the following rule is scoped
+			// normally. Adding a dedicated rule must not lose that.
+			[
+				'@container (width > {',
+				'@container card (min-width: 100px {',
+				'@container scroll-state(stuck: {',
+				'@container scroll-state((stuck: {',
+				'@media (foo {',
+				'@media screen and (min-width: {'
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				var token = lines[1].find(t => t.value === 'red');
+				assert.ok(token, prelude + ' -> `red` missing, so the line was swallowed whole');
+				assert.ok(token.scopes.some(s => s.includes('meta.property-value')),
+					prelude + ' -> `red` is not a declaration value: ' + token.scopes.join(' '));
+			});
+		});
+		it('does not let an unclosed prelude swallow the rest of the stylesheet', function () {
+			var rules = Array.from({ length: 48 }, function (_, i) { return '.r' + i + ' { color: red; }'; });
+			// Every parenthesised region, against every way the prelude can be
+			// left unterminated. Covering only one terminator hid leaks in the
+			// others, and covering only a distant rule hid a leak that consumed
+			// the first rule whole.
+			[
+				['@scope (:is(.a)', ['{', '', ';']]
+			].forEach(function (probe) {
+				var open = probe[0];
+				probe[1].forEach(function (terminator) {
+					var prelude = open + terminator;
+					var lines = testGrammar.tokenizeLines([prelude].concat(rules).join('\n'));
+					var leaked = ['header', 'meta.function', 'property-value'];
+					// A bare or `;`-terminated prelude legitimately continues
+					// onto the next line -- a prelude may span lines until `{`,
+					// and `;` is legal inside one -- so only a line-final `{`
+					// guarantees the very next rule is already outside it.
+					var probes = terminator === '{' ? [[1, 'r0'], [48, 'r47']] : [[48, 'r47']];
+					probes.forEach(function (at) {
+						var token = lines[at[0]].find(t => t.value === at[1]);
+						assert.ok(token, prelude + ' -> ' + at[1] + ' missing');
+						token.scopes.forEach(function (scope) {
+							assert.ok(!leaked.some(l => scope.includes(l)), prelude + ' -> ' + at[1] + ' leaked ' + scope);
+						});
+						// The rule's own brace must open a property list, not be
+						// misread as the prelude's own body brace. A `{`
+						// terminator legitimately opens a container body, so the
+						// property list is nested rather than top level.
+						var brace = lines[at[0]].find(t => t.value === '{');
+						assert.deepStrictEqual(brace.scopes.slice(-2), ['meta.property-list.css', 'punctuation.section.property-list.begin.bracket.curly.css'], prelude + ' -> ' + at[1] + ' brace');
+						brace.scopes.forEach(function (scope) {
+							assert.ok(!leaked.some(l => scope.includes(l)), prelude + ' -> ' + at[1] + ' brace leaked ' + scope);
+						});
+					});
+				});
+			});
+		});
+		it('recovers from env() arguments that begin with a block delimiter', function () {
+			// A `;` inside a function block and a matched `{}` pair are both
+			// allowed in a `<declaration-value>`, so these are valid custom
+			// property declarations, not just mid-edit garbage. Either way the
+			// grammar must not leak past the closing bracket.
+			[
+				'a { padding: env(;) }',
+				'a { padding: env(}) }',
+				'a { padding: env(;); }',
+				'a { padding: env(});}',
+				'a{padding:env(;)}',
+				'a { --x: env(;); }',
+				'a { --gap: env(;) }',
+				'a { --x: env({}); }',
+				'a { --x: env({ color: red; }); }'
+			].forEach(function (declaration) {
+				var source = declaration + '\n.after > p { color: red; }';
+				var lines = testGrammar.tokenizeLines(source);
+				assert.deepStrictEqual(lines[1].find(t => t.value === 'after').scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], declaration);
+				assert.ok(!lines[1].find(t => t.scopes.includes('meta.function.env.css')), declaration);
+				assert.deepStrictEqual(testGrammar.scopeStackAtEnd(source), ['source.css'], declaration);
+			});
+		});
+		it('recovers for every region that carries the brace bail-out', function () {
+			// One case per region carrying the bail-out, so that dropping it from
+			// any one of them fails a test. Value functions are reached through an
+			// ordinary declaration and selectors through `@scope`, because the
+			// container and media conditions that used to reach them no longer
+			// bail out at a brace.
+			[
+				'a { color: rgb(255{',
+				'a { color: oklch(50%{',
+				'a { background: linear-gradient(red{',
+				'a { background: -webkit-gradient(linear{',
+				'a { clip-path: polygon(0 0{',
+				'a { transition-timing-function: cubic-bezier(0,0{',
+				'a { transition-timing-function: steps(2{',
+				'a { top: anchor(top{',
+				'a { width: anchor-size(width{',
+				'a { width: clamp(1px{',
+				'a { transform: translate(1px{',
+				'a { width: calc(1px{',
+				'a { width: calc((1px{'
+			].forEach(function (declaration) {
+				var lines = testGrammar.tokenizeLines(declaration + '\n.after { color: red; }');
+				var red = lines[1].find(t => t.value === 'red');
+				assert.ok(red, declaration + ' -> red missing');
+				red.scopes.forEach(function (scope) {
+					assert.ok(!scope.includes('meta.function'),
+						declaration + ' -> leaked ' + scope);
+				});
+			});
+			[
+				'@scope (:dir(ltr{',
+				'@scope (:lang(en{',
+				'@scope (:state(foo{',
+				'@scope (::part(box{',
+				'@scope (::highlight(h{',
+				'@scope (::view-transition-group(g{',
+				'@scope (::scroll-button(up{',
+				'@scope (::slotted(a{',
+				'@scope (:is(.a{',
+				'@scope (:nth-child(2 of .special{'
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				var token = lines[1].find(t => t.value === 'after');
+				assert.ok(token, prelude + ' -> .after missing');
+				token.scopes.forEach(function (scope) {
+					assert.ok(!['header', 'meta.function', 'scope.limit'].some(l => scope.includes(l)),
+						prelude + ' -> leaked ' + scope);
+				});
+			});
+		});
+		it('does not scope the slash separator inside color functions', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { color: rgb(0 0 0 / 50%); }').tokens;
+			var slash = tokens.find(t => t.value.trim() === '/');
+			assert.deepStrictEqual(slash.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css']);
+		});
+		it('does not recognize functions dropped from the css-values-5 draft', function () {
+			['media-progress', 'container-progress'].forEach(function (fn) {
+				var tokens = testGrammar.tokenizeLine('a { width: ' + fn + '(width, 0px, 100px); }').tokens;
+				assert.ok(!tokens.find(x => x.scopes.includes('support.function.misc.css')), fn);
+			});
+		});
+		it('does not recognize toggle(), which the draft renamed to cycle()', function () {
+			var tokens = testGrammar.tokenizeLine('a { width: toggle(1px, 2px); }').tokens;
+			assert.ok(!tokens.find(x => x.value === 'toggle' && x.scopes.includes('support.function.misc.css')));
+		});
+		it('recovers when the unclosed parenthesis is a nested one', function () {
+			// The bail-out on an outer prelude region cannot fire while an inner
+			// parenthesised rule is still active, so every region reachable
+			// inside a prelude needs it too. Covering only outer parentheses
+			// hid this: each of these leaked the rest of the stylesheet into
+			// the at-rule header while the outer-paren cases all passed.
+			[
+				'@scope (:is(.a{',
+				'@scope (.a) to (:where(.b{',
+				'@scope (:nth-child(2 of .special{'
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				var token = lines[1].find(t => t.value === 'after');
+				assert.ok(token, prelude + ' -> .after missing');
+				token.scopes.forEach(function (scope) {
+					assert.ok(!['header', 'meta.function', 'scope.limit'].some(l => scope.includes(l)),
+						prelude + ' -> leaked ' + scope);
+				});
+				assert.deepStrictEqual(
+					lines[1].find(t => t.value === '{').scopes.slice(-2),
+					['meta.property-list.css', 'punctuation.section.property-list.begin.bracket.curly.css'],
+					prelude + ' -> brace');
+			});
+		});
+		it('bounds an unterminated language range to its own line', function () {
+			// `:lang()` carries its own local string rules; without the
+			// end-of-line fallback the shared `#string` rule already uses, an
+			// unterminated range stayed open and scoped every following line
+			// as string content to the end of the file. (`:dir()` takes only
+			// `ltr`/`rtl` and has no string region, so it is unaffected.)
+			['"', "'"].forEach(function (quote) {
+				var lines = testGrammar.tokenizeLines('@scope (:lang(' + quote + 'en\n.after { color: red; }');
+				lines[1].forEach(function (token) {
+					token.scopes.forEach(function (scope) {
+						assert.ok(!scope.includes('string.quoted'),
+							quote + ' -> ' + JSON.stringify(token.value) + ' leaked ' + scope);
+					});
+				});
+				assert.deepStrictEqual(
+					lines[1].find(t => t.value === 'color').scopes.slice(-1),
+					['support.type.property-name.css'],
+					quote + ' -> declaration not recognised on the following line');
+			});
+		});
+		it('recovers regardless of a closing parenthesis later on the line', function () {
+			// The bail-out is unconditional: it no longer scans the rest of the
+			// line for a `)`, so a `)` inside a comment, string or escape can
+			// neither suppress nor trigger it. That scan was quadratic on a
+			// legal line holding many balanced blocks.
+			[
+				'@scope (.a{ /* ) */',
+				'@scope (.a{ \\)',
+				'@scope (.a{ "x)"',
+				"@scope (.a{ 'x)'",
+				'@scope (:nth-child(2 of .x{ /* ) */'
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				var token = lines[1].find(t => t.value === 'after');
+				assert.ok(token, prelude + ' -> .after missing');
+				token.scopes.forEach(function (scope) {
+					assert.ok(!['header', 'meta.function', 'scope.limit'].some(l => scope.includes(l)),
+						prelude + ' -> leaked ' + scope);
+				});
+			});
+		});
+		it('recovers when the prelude line ends in a line-continuation backslash', function () {
+			// A trailing backslash is not a complete escape, so it matched no
+			// alternative in the bail-out. The newline-escape rule then stayed
+			// active and held the prelude open across the line boundary.
+			[
+				'@scope (:nth-child(2 of .x{ \\',
+				// The same incomplete escape inside an unterminated string.
+				'@scope (.a{ "x\\',
+				'@scope (.a{ \'x\\'
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				lines[1].forEach(function (token) {
+					token.scopes.forEach(function (scope) {
+						assert.ok(!['header', 'meta.function', 'scope.limit'].some(l => scope.includes(l)),
+							prelude + ' -> ' + JSON.stringify(token.value) + ' leaked ' + scope);
+					});
+				});
+			});
+		});
+		it('keeps scoping property names that moved within the property list', function () {
+			// These four sit in a different branch of the property-name
+			// alternation than they used to. The scope is the same either way,
+			// so this is a guard against the move dropping one, not a change in
+			// output: it passes on the unmodified grammar too.
+			['ruby-overhang', 'text-wrap', 'white-space-collapse', 'scroll-snap-stop'].forEach(function (prop) {
+				var tokens = testGrammar.tokenizeLine('a { ' + prop + ': inherit; }').tokens;
+				var t = tokens.find(x => x.value === prop);
+				assert.deepStrictEqual(t.scopes, ['source.css', 'meta.property-list.css', 'meta.property-name.css', 'support.type.property-name.css'], prop);
+			});
+		});
+		it('does not recognize a bare shape property', function () {
+			var tokens = testGrammar.tokenizeLine('a { shape: none; }').tokens;
+			assert.ok(!tokens.find(x => x.value === 'shape' && x.scopes.includes('support.type.property-name.css')));
+		});
+		it('does not recognize the renamed inset-area property', function () {
+			var tokens = testGrammar.tokenizeLine('a { inset-area: top; }').tokens;
+			assert.ok(!tokens.find(x => x.value === 'inset-area' && x.scopes.includes('support.type.property-name.css')));
+		});
+		it('does not recognize functional-only pseudo-elements without arguments', function () {
+			['scroll-button', 'view-transition-group', 'view-transition-image-pair', 'view-transition-new', 'view-transition-old'].forEach(function (pseudoElement) {
+				var tokens = testGrammar.tokenizeLine('a::' + pseudoElement + ' {}').tokens;
+				assert.ok(!tokens.find(x => x.value === pseudoElement && x.scopes.includes('entity.other.attribute-name.pseudo-element.css')), pseudoElement);
+			});
+		});
+		it('only treats :current() as a functional time pseudo-class', function () {
+			['past', 'future'].forEach(function (pseudoClass) {
+				var tokens = testGrammar.tokenizeLine('a:' + pseudoClass + '(.x) {}').tokens;
+				assert.ok(!tokens.find(x => x.value === '(' && x.scopes.includes('punctuation.section.function.begin.bracket.round.css')), pseudoClass);
+			});
+		});
+		it('does not accept an `of` clause in :nth-of-type()', function () {
+			// Selectors 4 gives the `of S` syntax to :nth-child()/:nth-last-child()
+			// only; :nth-of-type() takes An+B alone.
+			['a:nth-of-type(2 of .x) {}', 'a:nth-last-of-type(2 of .x) {}'].forEach(function (css) {
+				var tokens = testGrammar.tokenizeLine(css).tokens;
+				assert.ok(!tokens.find(t => t.value === 'of' && t.scopes.includes('keyword.operator.logical.of.css')), css);
+			});
+			var tokens = testGrammar.tokenizeLine('a:nth-last-of-type(2n) {}').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === 'nth-last-of-type').scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css']);
+			assert.deepStrictEqual(tokens.find(t => t.value === '2n').scopes, ['source.css', 'meta.selector.css', 'constant.numeric.css']);
+		});
+		it('does not recognize pseudo-classes removed from Selectors 4', function () {
+			var tokens = testGrammar.tokenizeLine('a:target-within {}').tokens;
+			assert.ok(!tokens.find(x => x.value === 'target-within' && x.scopes.includes('entity.other.attribute-name.pseudo-class.css')));
+		});
+		it('does not recognize removed media features', function () {
+			['display-capabilities', 'shape'].forEach(function (feature) {
+				var tokens = testGrammar.tokenizeLine('@media (' + feature + ': round) {').tokens;
+				assert.ok(!tokens.find(x => x.value === feature && x.scopes.includes('support.type.property-name.media.css')), feature);
+			});
 		});
 	});
 });
