@@ -3976,6 +3976,166 @@ describe('CSS grammar', function () {
 			]);
 		});
 
+		it('recovers from an unclosed functional pseudo-class', function () {
+			// These four sites carry the `{` bail-out. The assertion pins the
+			// exact scopes of `.after` instead of rejecting a few scope
+			// fragments: a leaked pseudo-class region is still
+			// `meta.selector.css`, which a fragment check cannot tell apart
+			// from a recovered selector, so a weaker assertion passes even
+			// when the guard is removed.
+			[
+				'a:dir(ltr{',
+				'a:lang(en{',
+				'a:is(.b{',
+				'a:nth-of-type(2{'
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				assert.deepStrictEqual(lines[1][1], {
+					scopes: [
+						'source.css',
+						'meta.property-list.css',
+						'meta.selector.css',
+						'entity.other.attribute-name.class.css'
+					],
+					value: 'after'
+				}, prelude);
+			});
+		});
+
+		it('recovers from an unclosed transform function in a prelude', function () {
+			// The transform function rule is reachable from an at-rule
+			// condition, where losing the bail-out leaks
+			// `meta.at-rule.media.header.css` over the rest of the file.
+			var lines = testGrammar.tokenizeLines('@media (x: translate(1px{\n.after { color: red; }');
+			assert.deepStrictEqual(lines[1][1], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.media.body.css',
+					'meta.selector.css',
+					'entity.other.attribute-name.class.css'
+				],
+				value: 'after'
+			});
+		});
+
+		it('keeps a general-enclosed condition holding a balanced curly block intact', function () {
+			// `<general-enclosed>` is `( <any-value>? )` and `<any-value>`
+			// admits a balanced `{...}` block, so this is legal CSS. The
+			// condition therefore uses a narrowed bail-out that only fires on
+			// a `{` which is not closed before the next brace.
+			var lines = testGrammar.tokenizeLines('@media (a: {b}) {\n.x { color: red; }\n}');
+			assert.deepStrictEqual(lines[0][6], {
+				scopes: ['source.css', 'meta.at-rule.media.header.css'],
+				value: ' {b}'
+			});
+			assert.deepStrictEqual(lines[0][7], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.media.header.css',
+					'punctuation.definition.parameters.end.bracket.round.css'
+				],
+				value: ')'
+			});
+			assert.deepStrictEqual(lines[1][1], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.media.body.css',
+					'meta.selector.css',
+					'entity.other.attribute-name.class.css'
+				],
+				value: 'x'
+			});
+		});
+
+		it('recovers from a general-enclosed condition whose curly block is unbalanced', function () {
+			// The other side of the narrowed bail-out. Here the `{` is not
+			// closed before the next brace, so the condition releases and the
+			// body opens rather than swallowing the rest of the file.
+			var lines = testGrammar.tokenizeLines('@media (a: {b {\n.after { color: red; }');
+			assert.deepStrictEqual(lines[0][7], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.media.body.css',
+					'punctuation.section.media.begin.bracket.curly.css'
+				],
+				value: '{'
+			});
+			assert.deepStrictEqual(lines[1][1], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.media.body.css',
+					'meta.property-list.css',
+					'meta.selector.css',
+					'entity.other.attribute-name.class.css'
+				],
+				value: 'after'
+			});
+		});
+
+		it('keeps a declaration-value function holding a curly block intact', function () {
+			// `attr()`, `if()`, `style()` and `cycle()` share one rule and are
+			// deliberately left without the bail-out, because a
+			// `<declaration-value>` may legally contain a balanced block that
+			// spans lines. Adding a guard here would mis-scope legal CSS, so
+			// this test exists to fail if one is ever added.
+			var lines = testGrammar.tokenizeLines('a { --x: attr(data-x, {\n  color: red;\n}); }');
+			assert.deepStrictEqual(lines[0][12], {
+				scopes: [
+					'source.css',
+					'meta.property-list.css',
+					'meta.property-value.css',
+					'meta.function.misc.css',
+					'punctuation.section.group.begin.bracket.curly.css'
+				],
+				value: '{'
+			});
+			assert.deepStrictEqual(lines[2][1], {
+				scopes: [
+					'source.css',
+					'meta.property-list.css',
+					'meta.property-value.css',
+					'meta.function.misc.css',
+					'punctuation.section.function.end.bracket.round.css'
+				],
+				value: ')'
+			});
+		});
+
+		it('keeps a url token containing a curly brace intact', function () {
+			// A url token may legally contain `{`, so neither `url()` nor
+			// `@document url-prefix()` carries the bail-out.
+			var tokens = testGrammar.tokenizeLine('a { background: url(foo{bar); }').tokens;
+			assert.deepStrictEqual(tokens[9], {
+				scopes: [
+					'source.css',
+					'meta.property-list.css',
+					'meta.property-value.css',
+					'meta.function.url.css',
+					'variable.parameter.url.css'
+				],
+				value: 'foo{bar'
+			});
+			var lines = testGrammar.tokenizeLines('@document url-prefix(https://example.test/{path) {\n.x { color: red; }\n}');
+			assert.deepStrictEqual(lines[0][5], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.document.header.css',
+					'meta.function.document-rule.css',
+					'variable.parameter.document-rule.css'
+				],
+				value: 'https://example.test/{path'
+			});
+			assert.deepStrictEqual(lines[1][1], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.document.body.css',
+					'meta.selector.css',
+					'entity.other.attribute-name.class.css'
+				],
+				value: 'x'
+			});
+		});
+
 		it('keeps a brace inside a legal general-enclosed string out of the body', function () {
 			// `<general-enclosed>` accepts `<any-value>`, so a quoted string
 			// containing `{` is legal. The bail-out only inspects text from
@@ -4353,9 +4513,23 @@ describe('CSS grammar', function () {
 		it('does not accept an `of` clause in :nth-of-type()', function () {
 			// Selectors 4 gives the `of S` syntax to :nth-child()/:nth-last-child()
 			// only; :nth-of-type() takes An+B alone.
+			// Pin the tokens rather than asserting the absence of a scope name,
+			// which no rule can produce yet and which therefore passes on
+			// `origin/main` too. The clause has to stay unrecognised text.
 			['a:nth-of-type(2 of .x) {}', 'a:nth-last-of-type(2 of .x) {}'].forEach(function (css) {
 				var tokens = testGrammar.tokenizeLine(css).tokens;
-				assert.ok(!tokens.find(t => t.value === 'of' && t.scopes.includes('keyword.operator.logical.of.css')), css);
+				assert.deepStrictEqual(tokens[5], {
+					scopes: ['source.css', 'meta.selector.css'],
+					value: ' of .x'
+				}, css);
+				assert.deepStrictEqual(tokens[6], {
+					scopes: [
+						'source.css',
+						'meta.selector.css',
+						'punctuation.section.function.end.bracket.round.css'
+					],
+					value: ')'
+				}, css);
 			});
 			var tokens = testGrammar.tokenizeLine('a:nth-last-of-type(2n) {}').tokens;
 			assert.deepStrictEqual(tokens.find(t => t.value === 'nth-last-of-type').scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css']);
