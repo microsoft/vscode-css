@@ -686,6 +686,214 @@
         ]
       }
       {
+        # @scope
+        'begin': '(?i)(?=@scope([\\s({]|/\\*|$))'
+        'end': '(?<=})(?!\\G)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)scope'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.scope.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.scope.header.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+              {
+                # `to <scope-end>` introduces the scoping limit. The
+                # parenthesised selector before it is the scope root, so
+                # nesting the limit here keeps the two distinguishable.
+                # `to` is an identifier, so either letter may be written
+                # as an escape.
+                'begin': '''(?xi) (?<=\\s|^|\\)|\\*/)
+                  (
+                    (?:t|\\\\(?:0{0,4}(?:74|54)[ \\t\\f]?|t))
+                    (?:o|\\\\(?:0{0,4}(?:6f|4f)[ \\t\\f]?|o))
+                  )
+                  (?=\\s|\\(|/\\*|$)
+                '''
+                'beginCaptures':
+                  '1':
+                    'name': 'keyword.operator.logical.scope.css'
+                'end': '(?=\\s*[{;])'
+                'patterns': [
+                  {
+                    'include': '#comment-block'
+                  }
+                  {
+                    'begin': '\\('
+                    'beginCaptures':
+                      '0':
+                        'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+                    'end': '\\)'
+                    'endCaptures':
+                      '0':
+                        'name': 'punctuation.definition.parameters.end.bracket.round.css'
+                    'name': 'meta.scope.limit.css'
+                    'patterns': [
+                      {
+                        'include': '#selector-innards'
+                      }
+                      {
+                        'include': '#balanced-selector-parens'
+                      }
+                    ]
+                  }
+                ]
+              }
+              {
+                'begin': '\\('
+                'beginCaptures':
+                  '0':
+                    'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+                'end': '\\)'
+                'endCaptures':
+                  '0':
+                    'name': 'punctuation.definition.parameters.end.bracket.round.css'
+                'name': 'meta.scope.start.css'
+                'patterns': [
+                  {
+                    'include': '#selector-innards'
+                  }
+                  {
+                    'include': '#balanced-selector-parens'
+                  }
+                ]
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.scope.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.scope.end.bracket.curly.css'
+            'name': 'meta.at-rule.scope.body.css'
+            'patterns': [
+              {
+                'include': '#rule-list-innards'
+              }
+              {
+                'include': '$self'
+              }
+            ]
+          }
+        ]
+      }
+      {
+        # @starting-style
+        'begin': '(?i)(?=@starting-style([\\s{]|/\\*|$))'
+        'end': '(?<=})(?!\\G)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)starting-style'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.starting-style.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.starting-style.header.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.starting-style.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.starting-style.end.bracket.curly.css'
+            'name': 'meta.at-rule.starting-style.body.css'
+            'patterns': [
+              {
+                'include': '#rule-list-innards'
+              }
+              {
+                'include': '$self'
+              }
+            ]
+          }
+        ]
+      }
+      {
+        # @property
+        'begin': '(?i)(?=@property([\\s{]|/\\*|$))'
+        'end': '(?<=})(?!\\G)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)property'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.property.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.property.header.css'
+            'patterns': [
+              {
+                'include': '#comment-block'
+              }
+              {
+                # `@property <custom-property-name>#` registers each name in
+                # the list with the same descriptors.
+                'include': '#commas'
+              }
+              {
+                'captures':
+                  '0':
+                    'patterns': [
+                      {
+                        'include': '#escapes'
+                      }
+                    ]
+                # A hexadecimal escape is terminated by any single
+                # whitespace character, not only a space or a tab.
+                'match': '''(?x) (?<![\\w-])
+                  --
+                  (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]
+                    |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|.)
+                  )+
+                '''
+                'name': 'variable.css'
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.property-list.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.property-list.end.bracket.curly.css'
+            'name': 'meta.at-rule.property.body.css'
+            'patterns': [
+              {
+                'match': '(?i)(?<![\\w-])(syntax|inherits|initial-value)(?![\\w-])'
+                'name': 'meta.property-name.css support.type.property-name.css'
+              }
+              {
+                'include': '#rule-list-innards'
+              }
+            ]
+          }
+        ]
+      }
+      {
         # Single line @custom-at-rule terminated with `;`, such as
         # @my-rule foo bar;
         'begin': '(?i)(?=@[\\w-]+[^;]+;\s*$)'
@@ -868,6 +1076,24 @@
   'commas':
     'match': ','
     'name': 'punctuation.separator.list.comma.css'
+  'balanced-selector-parens':
+    # A bracketed group that #selector-innards does not consume itself,
+    # such as the argument of a functional pseudo-class this grammar does
+    # not recognise. Without this the group's `)` is mistaken for the one
+    # closing the region around it, so a valid selector is mis-scoped.
+    'begin': '\\('
+    'end': '\\)'
+    'patterns': [
+      {
+        'include': '#balanced-selector-parens'
+      }
+      {
+        'include': '#string'
+      }
+      {
+        'include': '#selector-innards'
+      }
+    ]
   'comment-block':
     'begin': '/\\*'
     'beginCaptures':

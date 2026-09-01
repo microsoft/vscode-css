@@ -4482,4 +4482,417 @@ describe('CSS grammar', function () {
 		});
 
 	});
+
+	describe('@property, @scope and @starting-style', function () {
+		it('consumes the whitespace that terminates a hex escape in a custom property name', function () {
+			// `\\31 foo` is the single identifier `--1foo`: the space ends the hex
+			// escape rather than ending the name.
+			var tokens = testGrammar.tokenizeLine('@property --\\31 foo { syntax: "*"; }').tokens;
+			var tail = tokens.find(t => t.value === ' foo');
+			assert.ok(tail && tail.scopes.includes('variable.css'), 'the escape terminator and what follows it stay part of the name');
+		});
+
+		it('keeps a prelude that legally spans lines in the header', function () {
+			// `<any-value>` permits a top-level `;` and `<declaration-value>`
+			// permits one inside any balanced block, so a prelude whose `)`
+			// only arrives on a later line still holds together.
+			[
+				'@container (future;\n syntax)',
+				'@container style(--x: [a;\n b])',
+				'@container style(--x: (a;\n b))',
+				'@container style(foo(a;\n b))',
+				'@container (min-width: 1px) and\n (max-width: 9px)',
+				'@scope (.a) to\n (.b)'
+			].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + ' {\n.z { color: red; }\n}');
+				var close = lines[1].filter(t => t.value === ')').pop();
+				assert.ok(close.scopes.some(s => s.startsWith('meta.at-rule.')), prelude + ' -> ) left the header: ' + close.scopes.join('|'));
+				assert.deepStrictEqual(lines[2].find(t => t.value === 'z').scopes, ['source.css', 'meta.at-rule.container.body.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'].map(function (s) {
+					return prelude.startsWith('@scope') ? s.replace('container', 'scope') : s;
+				}), prelude);
+			});
+		});
+
+		it('keeps scoping the closing parenthesis of a well-formed prelude', function () {
+			var tokens = testGrammar.tokenizeLine('@container (width > 400px) {').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === ')').scopes, ['source.css', 'meta.at-rule.container.header.css', 'punctuation.definition.parameters.end.bracket.round.css']);
+			tokens = testGrammar.tokenizeLine('@container style(--theme: dark) {').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === ')').scopes, ['source.css', 'meta.at-rule.container.header.css', 'meta.function.style.css', 'punctuation.section.function.end.bracket.round.css']);
+			tokens = testGrammar.tokenizeLine('@container scroll-state(stuck: top) {').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === ')').scopes, ['source.css', 'meta.at-rule.container.header.css', 'meta.function.scroll-state.css', 'punctuation.section.function.end.bracket.round.css']);
+			tokens = testGrammar.tokenizeLine('@scope (.a) to (.b) {').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === ')').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.start.css', 'punctuation.definition.parameters.end.bracket.round.css']);
+			assert.deepStrictEqual(tokens.filter(t => t.value === ')')[1].scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'punctuation.definition.parameters.end.bracket.round.css']);
+		});
+
+		it('parses the body of a @starting-style rule', function () {
+			// The only existing assertion was on the at-keyword, so the whole
+			// body could be emptied without a test failing.
+			var tokens = testGrammar.tokenizeLine('@starting-style { .z { opacity: 0; } }').tokens;
+			assert.deepStrictEqual(tokens[3], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.starting-style.body.css',
+					'punctuation.section.starting-style.begin.bracket.curly.css'
+				],
+				value: '{'
+			});
+			assert.deepStrictEqual(tokens[6], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.starting-style.body.css',
+					'meta.selector.css',
+					'entity.other.attribute-name.class.css'
+				],
+				value: 'z'
+			});
+			assert.deepStrictEqual(tokens[10], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.starting-style.body.css',
+					'meta.property-list.css',
+					'meta.property-name.css',
+					'support.type.property-name.css'
+				],
+				value: 'opacity'
+			});
+			assert.deepStrictEqual(tokens[18], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.starting-style.body.css',
+					'punctuation.section.starting-style.end.bracket.curly.css'
+				],
+				value: '}'
+			});
+		});
+
+		it('scopes @property descriptors and the custom property name', function () {
+			var lines;
+			lines = testGrammar.tokenizeLines('@property --my-color {\n  syntax: "<color>";\n  inherits: false;\n}\n.after { color: red; }');
+			assert.deepStrictEqual(lines[0][1], { scopes: ['source.css', 'meta.at-rule.property.header.css', 'keyword.control.at-rule.property.css'], value: 'property' });
+			assert.deepStrictEqual(lines[0][3], { scopes: ['source.css', 'meta.at-rule.property.header.css', 'variable.css'], value: '--my-color' });
+			assert.deepStrictEqual(lines[1][1], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property-name.css', 'support.type.property-name.css'], value: 'syntax' });
+			assert.deepStrictEqual(lines[2][1], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property-name.css', 'support.type.property-name.css'], value: 'inherits' });
+			// The generic at-rule fallback already closed this block correctly, so
+			// this only guards the dedicated rule against regressing that behaviour.
+			assert.deepStrictEqual(lines[4][0], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+			assert.deepStrictEqual(lines[4][1], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'after' });
+		});
+
+		it('scopes the closing brace of a @scope body', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (.a) { .x { color: red; } }').tokens;
+			assert.deepStrictEqual(tokens[23], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.scope.body.css',
+					'punctuation.section.scope.end.bracket.curly.css'
+				],
+				value: '}'
+			});
+		});
+
+		it('tokenizes @property descriptor values and closes its body', function () {
+			// The existing test asserted the descriptor names but none of
+			// their values, so `initial-value` and the generic value path
+			// could both be removed without a failure.
+			var lines = testGrammar.tokenizeLines('@property --x {\n  syntax: "*";\n  inherits: false;\n  initial-value: red;\n}');
+			assert.deepStrictEqual(lines[1][5], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.property.body.css',
+					'meta.property-value.css',
+					'string.quoted.double.css'
+				],
+				value: '*'
+			});
+			assert.deepStrictEqual(lines[2][4], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.property.body.css',
+					'meta.property-value.css'
+				],
+				value: 'false'
+			});
+			assert.deepStrictEqual(lines[3][1], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.property.body.css',
+					'meta.property-name.css',
+					'support.type.property-name.css'
+				],
+				value: 'initial-value'
+			});
+			assert.deepStrictEqual(lines[3][4], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.property.body.css',
+					'meta.property-value.css',
+					'support.constant.color.w3c-standard-color-name.css'
+				],
+				value: 'red'
+			});
+			assert.deepStrictEqual(lines[4][0], {
+				scopes: [
+					'source.css',
+					'meta.at-rule.property.body.css',
+					'punctuation.section.property-list.end.bracket.curly.css'
+				],
+				value: '}'
+			});
+		});
+
+		it('tokenizes @property names beginning with a digit after the required dashes', function () {
+			var tokens = testGrammar.tokenizeLine('@property --4-grid-columns {').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '--4-grid-columns').scopes, ['source.css', 'meta.at-rule.property.header.css', 'variable.css']);
+		});
+
+		it('tokenizes @scope preludes as selectors', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('@scope (.a) to (.b) {').tokens;
+			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.at-rule.scope.header.css', 'keyword.control.at-rule.scope.css'], value: 'scope' });
+			// The selector before `to` is the scope root and the one after it is
+			// the scoping limit, so the two carry different scopes.
+			assert.deepStrictEqual(tokens[4], { scopes: ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.start.css', 'entity.other.attribute-name.class.css', 'punctuation.definition.entity.css'], value: '.' });
+			assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.start.css', 'entity.other.attribute-name.class.css'], value: 'a' });
+			var to = tokens.find(t => t.value === 'to');
+			assert.deepStrictEqual(to.scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.operator.logical.scope.css']);
+			assert.deepStrictEqual(tokens.find(t => t.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+			// A scope root may itself contain a functional pseudo-class, whose
+			// closing parenthesis must not end the prelude region.
+			var nested = testGrammar.tokenizeLine('@scope (:has(.a)) to (.b) {').tokens;
+			assert.deepStrictEqual(nested.find(t => t.value === 'has').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.start.css', 'entity.other.attribute-name.pseudo-class.css']);
+			assert.deepStrictEqual(nested.find(t => t.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('tokenizes @starting-style', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('@starting-style { .z { opacity: 0; } }').tokens;
+			assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.at-rule.starting-style.header.css', 'keyword.control.at-rule.starting-style.css'], value: 'starting-style' });
+		});
+
+		it('tokenizes block at-rules whose prelude is omitted entirely', function () {
+			[
+				['@container{ .x { color: red; } }', 'container'],
+				['@scope{ .x { color: red; } }', 'scope'],
+				['@starting-style{ .x { color: red; } }', 'starting-style']
+			].forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[0]).tokens;
+				assert.deepStrictEqual(tokens[1], { scopes: ['source.css', 'meta.at-rule.' + pair[1] + '.header.css', 'keyword.control.at-rule.' + pair[1] + '.css'], value: pair[1] }, pair[0]);
+				assert.deepStrictEqual(tokens[2].scopes, ['source.css', 'meta.at-rule.' + pair[1] + '.body.css', 'punctuation.section.' + pair[1] + '.begin.bracket.curly.css'], pair[0]);
+			});
+		});
+		it('balances the brackets of a functional pseudo-class it does not recognise', function () {
+			// The `)` of `:host(.a)` is not the one that closes the scope
+			// root, or a valid selector is mis-scoped and a malformed one
+			// resumes as though it had closed.
+			var tokens = testGrammar.tokenizeLine('@scope (:host(.a)) to (.b) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'to').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.operator.logical.scope.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('leaks an unclosed scope root whether or not the pseudo-class is recognised', function () {
+			// `:has()` is recognised and `:host()` is not, and both have to
+			// behave the same when the root is left open.
+			['@scope (:has(.a){', '@scope (:host(.a){'].forEach(function (prelude) {
+				var lines = testGrammar.tokenizeLines(prelude + '\n.after { color: red; }');
+				assert.ok(lines[1][0].scopes.includes('meta.at-rule.scope.header.css'), prelude + ' -> ' + JSON.stringify(lines[1][0].scopes));
+			});
+		});
+
+		it('recognises an escaped scoping limit keyword', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (.a) t\\6f (.b) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 't\\6f ').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.operator.logical.scope.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('ends a hexadecimal escape in a custom property name at any whitespace', function () {
+			// A form feed terminates the escape and belongs to the name, so
+			// the rest of the name is not lost.
+			var tokens = testGrammar.tokenizeLine('@property --\\31\ffoo { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '\ffoo').scopes, ['source.css', 'meta.at-rule.property.header.css', 'variable.css']);
+		});
+
+		it('reads the scoping limit written with simple escapes', function () {
+			// A backslash before a non-hexadecimal character is a valid CSS
+			// escape for that character, so `\t\o` spells `to`.
+			var tokens = testGrammar.tokenizeLine('@scope (.a) \\t\\o (.b) { }').tokens;
+			assert.ok(tokens.find(x => x.scopes.includes('keyword.operator.logical.scope.css')), 'no scoping limit keyword');
+			assert.ok(tokens.find(x => x.scopes.includes('meta.scope.limit.css')), 'no scoping limit');
+		});
+
+		it('reads the scoping limit at the six-digit escape boundary', function () {
+			// Six hexadecimal digits are the most an escape may have, so
+			// `\\000074` is `t` but `\\0000074` is not.
+			var six = testGrammar.tokenizeLine('@scope (.a) \\000074o (.b) { }').tokens;
+			assert.deepStrictEqual(six.find(x => x.value === '\\000074o').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.operator.logical.scope.css']);
+			assert.deepStrictEqual(six.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+
+			var seven = testGrammar.tokenizeLine('@scope (.a) \\0000074o (.b) { }').tokens;
+			assert.ok(!seven.some(x => x.scopes.includes('keyword.operator.logical.scope.css')), 'seven-digit escape read as `to`');
+			assert.ok(!seven.some(x => x.scopes.includes('meta.scope.limit.css')), 'seven-digit escape opened a scoping limit');
+		});
+
+		it('ends the scoping limit keyword escape at a form feed', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (.a) t\\6f\f(.b) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 't\\6f\f').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.operator.logical.scope.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('balances parentheses of a nested unknown function in the scope root', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (:host(foo(.a)) > .b) to (.c) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.start.css', 'entity.other.attribute-name.class.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'c').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('ignores a parenthesis inside a string when balancing the scope root', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (:host(")" .a) > .b) to (.c) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.start.css', 'entity.other.attribute-name.class.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'c').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('balances parentheses of a functional pseudo-class in the scoping limit', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (.a) to (:host(.b) > .c) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'c').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('reads the new at-rules and the scoping limit keyword in any case', function () {
+			var scope = testGrammar.tokenizeLine('@SCOPE (.a) TO (.b) { }').tokens;
+			assert.deepStrictEqual(scope.find(x => x.value === 'SCOPE').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.control.at-rule.scope.css']);
+			assert.deepStrictEqual(scope.find(x => x.value === 'TO').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.operator.logical.scope.css']);
+			assert.deepStrictEqual(scope.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+
+			var property = testGrammar.tokenizeLine('@PROPERTY --x { SYNTAX: "*"; }').tokens;
+			assert.deepStrictEqual(property.find(x => x.value === 'PROPERTY').scopes, ['source.css', 'meta.at-rule.property.header.css', 'keyword.control.at-rule.property.css']);
+			assert.deepStrictEqual(property.find(x => x.value === 'SYNTAX').scopes, ['source.css', 'meta.at-rule.property.body.css', 'meta.property-name.css', 'support.type.property-name.css']);
+
+			var starting = testGrammar.tokenizeLine('@STARTING-STYLE { a { color: red; } }').tokens;
+			assert.deepStrictEqual(starting.find(x => x.value === 'STARTING-STYLE').scopes, ['source.css', 'meta.at-rule.starting-style.header.css', 'keyword.control.at-rule.starting-style.css']);
+		});
+
+		it('allows comments around the scoping limit keyword', function () {
+			var tokens = testGrammar.tokenizeLine('@scope /*head*/ (.a) to /*limit*/ (.b) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'head').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'comment.block.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'limit').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'comment.block.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('marks the punctuation of the new at-rules', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (.a) to (.b) { }').tokens;
+			var ats = tokens.filter(x => x.scopes.includes('punctuation.definition.keyword.css'));
+			assert.strictEqual(ats.length, 1);
+			assert.deepStrictEqual(ats[0].scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.control.at-rule.scope.css', 'punctuation.definition.keyword.css']);
+
+			var opens = tokens.filter(x => x.scopes.includes('punctuation.definition.parameters.begin.bracket.round.css'));
+			assert.strictEqual(opens.length, 2);
+			assert.ok(opens[0].scopes.includes('meta.scope.start.css'), 'scope root parenthesis unmarked');
+			assert.ok(opens[1].scopes.includes('meta.scope.limit.css'), 'scoping limit parenthesis unmarked');
+
+			var property = testGrammar.tokenizeLine('@property --x { }').tokens;
+			assert.deepStrictEqual(property.find(x => x.value === '{').scopes, ['source.css', 'meta.at-rule.property.body.css', 'punctuation.section.property-list.begin.bracket.curly.css']);
+		});
+
+		it('does not read an over-long escape as the scoping limit', function () {
+			// A hexadecimal escape is at most six digits, so `\00000074`
+			// is not `t` and there is no scoping limit here.
+			var tokens = testGrammar.tokenizeLine('@scope (.a) \\00000074o (.b) { }').tokens;
+			assert.ok(!tokens.some(x => x.scopes.includes('keyword.operator.logical.scope.css')), 'over-long escape read as `to`');
+			assert.ok(!tokens.some(x => x.scopes.includes('meta.scope.limit.css')), 'over-long escape opened a scoping limit');
+		});
+
+
+		it('tokenizes a declaration written directly in the @scope body', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (.a) { color: red; }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'color').scopes, ['source.css', 'meta.at-rule.scope.body.css', 'meta.property-name.css', 'support.type.property-name.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'red').scopes, ['source.css', 'meta.at-rule.scope.body.css', 'meta.property-value.css', 'support.constant.color.w3c-standard-color-name.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === ';').scopes, ['source.css', 'meta.at-rule.scope.body.css', 'punctuation.terminator.rule.css']);
+		});
+
+		it('tokenizes a declaration in a nested @starting-style body', function () {
+			// A top-level `@starting-style` holds style rules. A declaration is
+			// written straight into the body only when the rule is nested in one.
+			var tokens = testGrammar.tokenizeLine('#target { @starting-style { opacity: 0; } }').tokens;
+			var head = ['source.css', 'meta.property-list.css', 'meta.at-rule.starting-style.body.css'];
+			assert.deepStrictEqual(tokens.find(x => x.value === 'opacity').scopes, head.concat(['meta.property-name.css', 'support.type.property-name.css']));
+			assert.deepStrictEqual(tokens.find(x => x.value === '0').scopes, head.concat(['meta.property-value.css', 'constant.numeric.css']));
+			assert.deepStrictEqual(tokens.find(x => x.value === ';').scopes, head.concat(['punctuation.terminator.rule.css']));
+		});
+
+		it('tokenizes a scoping limit written without a scope root', function () {
+			// Both boundaries are optional, so `to (...)` may stand alone.
+			var tokens = testGrammar.tokenizeLine('@scope to (.limit) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'to').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'keyword.operator.logical.scope.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'limit').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('tokenizes a list of @property names', function () {
+			// `@property <custom-property-name>#` registers every name in the list.
+			var tokens = testGrammar.tokenizeLine('@property --width, --height, --depth { }').tokens;
+			var head = ['source.css', 'meta.at-rule.property.header.css'];
+			['--width', '--height', '--depth'].forEach(function (name) {
+				assert.deepStrictEqual(tokens.find(x => x.value === name).scopes, head.concat(['variable.css']), name);
+			});
+			assert.deepStrictEqual(tokens.filter(x => x.value === ',').length, 2);
+			tokens.filter(x => x.value === ',').forEach(function (comma) {
+				assert.deepStrictEqual(comma.scopes, head.concat(['punctuation.separator.list.comma.css']));
+			});
+		});
+
+		it('keeps a balanced block in an initial-value inside the value', function () {
+			// A registered initial value is a `<declaration-value>`, which admits a
+			// balanced block, so the descriptor after it is still a descriptor.
+			var lines = testGrammar.tokenizeLines('@property --x {\n  initial-value: {"foo":"bar"};\n  inherits: false;\n}');
+			assert.deepStrictEqual(lines[2].find(x => x.value === 'inherits').scopes, ['source.css', 'meta.at-rule.property.body.css', 'meta.property-name.css', 'support.type.property-name.css']);
+		});
+
+		it('leaks past a malformed semicolon form exactly as main does', function () {
+			// These at-rules take no semicolon form. A malformed one must swallow
+			// what follows rather than resume, which is what a browser does.
+			['@scope (.a); .after { color: red; }', '@property --x; .after { color: red; }'].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				assert.ok(!tokens.some(x => x.scopes.includes('meta.selector.css')), line + ' recovered at the semicolon');
+			});
+		});
+
+		it('tokenizes a comment between @starting-style and its body', function () {
+			var tokens = testGrammar.tokenizeLine('@starting-style /* c */ { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '/*').scopes, ['source.css', 'meta.at-rule.starting-style.header.css', 'comment.block.css', 'punctuation.definition.comment.begin.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === ' c ').scopes, ['source.css', 'meta.at-rule.starting-style.header.css', 'comment.block.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === '*/').scopes, ['source.css', 'meta.at-rule.starting-style.header.css', 'comment.block.css', 'punctuation.definition.comment.end.css']);
+		});
+
+		it('tokenizes a comment between @property and the property name', function () {
+			var tokens = testGrammar.tokenizeLine('@property /* c */ --x { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === ' c ').scopes, ['source.css', 'meta.at-rule.property.header.css', 'comment.block.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === '--x').scopes, ['source.css', 'meta.at-rule.property.header.css', 'variable.css']);
+		});
+
+		it('tokenizes a comment inside the @property body', function () {
+			var tokens = testGrammar.tokenizeLine('@property --x { /* c */ syntax: "*"; }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === ' c ').scopes, ['source.css', 'meta.at-rule.property.body.css', 'comment.block.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'syntax').scopes, ['source.css', 'meta.at-rule.property.body.css', 'meta.property-name.css', 'support.type.property-name.css']);
+		});
+
+		it('tokenizes an escape inside the @property body', function () {
+			var tokens = testGrammar.tokenizeLine('@property --x { synt\\61 x: "*"; }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '\\61').scopes, ['source.css', 'meta.at-rule.property.body.css', 'constant.character.escape.codepoint.css']);
+		});
+
+		it('marks the at sign of @starting-style and @property', function () {
+			var starting = testGrammar.tokenizeLine('@starting-style { }').tokens;
+			assert.deepStrictEqual(starting[0], { scopes: ['source.css', 'meta.at-rule.starting-style.header.css', 'keyword.control.at-rule.starting-style.css', 'punctuation.definition.keyword.css'], value: '@' });
+			var property = testGrammar.tokenizeLine('@property --x { }').tokens;
+			assert.deepStrictEqual(property[0], { scopes: ['source.css', 'meta.at-rule.property.header.css', 'keyword.control.at-rule.property.css', 'punctuation.definition.keyword.css'], value: '@' });
+		});
+
+		it('tokenizes a selector inside a balanced group in the scope root', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (:unknownfn(.a) .b) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'a').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.start.css', 'entity.other.attribute-name.class.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.start.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('tokenizes a selector inside a balanced group in the scoping limit', function () {
+			var tokens = testGrammar.tokenizeLine('@scope (.a) to (:unknownfn(#b)) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.id.css']);
+		});
+	});
 });
