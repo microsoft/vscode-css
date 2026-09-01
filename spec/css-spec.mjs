@@ -6093,4 +6093,98 @@ describe('CSS grammar', function () {
 		});
 
 	});
+
+	describe('property names', function () {
+
+		function eachSel(cases, want) {
+			cases.forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[1]).tokens;
+				var token = tokens.find(x => x.value === pair[0]);
+				assert.ok(token, pair[0] + ' produced no token in: ' + pair[1]);
+				assert.deepStrictEqual(token.scopes, want, pair[1]);
+			});
+		}
+
+		it('recognises additional property names as supported', function () {
+			[
+				'anchor-name', 'position-anchor', 'position-area', 'field-sizing',
+				'view-transition-name', 'contain-intrinsic-size', 'scroll-timeline',
+				'margin-trim', 'content-visibility', 'text-wrap-style', 'interpolate-size'
+			].forEach(function (prop) {
+				var tokens = testGrammar.tokenizeLine('a { ' + prop + ': inherit; }').tokens;
+				var t = tokens.find(x => x.value === prop);
+				assert.deepStrictEqual(t.scopes, ['source.css', 'meta.property-list.css', 'meta.property-name.css', 'support.type.property-name.css'], prop);
+			});
+		});
+
+		it('names every property it adds', function () {
+			eachSel([
+				['view-transition-group', 'a { view-transition-group: inherit; }'],
+				['animation-timeline', 'a { animation-timeline: inherit; }'],
+				['animation-range', 'a { animation-range: inherit; }'],
+				['animation-range-start', 'a { animation-range-start: inherit; }'],
+				['animation-range-end', 'a { animation-range-end: inherit; }'],
+				['view-transition-scope', 'a { view-transition-scope: inherit; }'],
+				['scroll-target-group', 'a { scroll-target-group: inherit; }'],
+				['print-color-adjust', 'a { print-color-adjust: inherit; }'],
+				['corner-top-left-shape', 'a { corner-top-left-shape: inherit; }'],
+				['corner-top-right-shape', 'a { corner-top-right-shape: inherit; }'],
+				['corner-bottom-right-shape', 'a { corner-bottom-right-shape: inherit; }'],
+				['corner-bottom-left-shape', 'a { corner-bottom-left-shape: inherit; }'],
+				['corner-start-start-shape', 'a { corner-start-start-shape: inherit; }'],
+				['corner-start-end-shape', 'a { corner-start-end-shape: inherit; }'],
+				['corner-end-start-shape', 'a { corner-end-start-shape: inherit; }'],
+				['corner-end-end-shape', 'a { corner-end-end-shape: inherit; }'],
+				['corner-shape', 'a { corner-shape: round; }'],
+				['anchor-name', 'a { anchor-name: inherit; }'],
+				['anchor-scope', 'a { anchor-scope: inherit; }'],
+				['position-anchor', 'a { position-anchor: inherit; }'],
+				['position-area', 'a { position-area: inherit; }'],
+				['position-try', 'a { position-try: inherit; }'],
+				['position-try-fallbacks', 'a { position-try-fallbacks: inherit; }'],
+				['position-try-order', 'a { position-try-order: inherit; }'],
+				['position-visibility', 'a { position-visibility: inherit; }'],
+				['animation-composition', 'a { animation-composition: inherit; }'],
+				['scroll-timeline', 'a { scroll-timeline: inherit; }'],
+				['scroll-timeline-axis', 'a { scroll-timeline-axis: inherit; }'],
+				['scroll-timeline-name', 'a { scroll-timeline-name: inherit; }'],
+				['timeline-scope', 'a { timeline-scope: inherit; }'],
+				['view-timeline', 'a { view-timeline: inherit; }'],
+				['view-timeline-axis', 'a { view-timeline-axis: inherit; }'],
+				['view-timeline-inset', 'a { view-timeline-inset: inherit; }'],
+				['view-timeline-name', 'a { view-timeline-name: inherit; }'],
+				['view-transition-class', 'a { view-transition-class: inherit; }'],
+				['view-transition-name', 'a { view-transition-name: inherit; }'],
+				['contain-intrinsic-block-size', 'a { contain-intrinsic-block-size: inherit; }'],
+				['contain-intrinsic-height', 'a { contain-intrinsic-height: inherit; }'],
+				['contain-intrinsic-inline-size', 'a { contain-intrinsic-inline-size: inherit; }'],
+				['contain-intrinsic-size', 'a { contain-intrinsic-size: inherit; }'],
+				['contain-intrinsic-width', 'a { contain-intrinsic-width: inherit; }'],
+				['content-visibility', 'a { content-visibility: inherit; }'],
+				['field-sizing', 'a { field-sizing: inherit; }'],
+				['forced-color-adjust', 'a { forced-color-adjust: inherit; }'],
+				['hyphenate-limit-chars', 'a { hyphenate-limit-chars: inherit; }'],
+				['interpolate-size', 'a { interpolate-size: inherit; }'],
+				['margin-trim', 'a { margin-trim: inherit; }'],
+				['math-depth', 'a { math-depth: inherit; }'],
+				['math-shift', 'a { math-shift: inherit; }'],
+				['math-style', 'a { math-style: inherit; }'],
+				['scroll-initial-target', 'a { scroll-initial-target: inherit; }'],
+				['scroll-marker-group', 'a { scroll-marker-group: inherit; }'],
+				['text-autospace', 'a { text-autospace: inherit; }'],
+				['text-box', 'a { text-box: inherit; }'],
+				['text-box-edge', 'a { text-box-edge: inherit; }'],
+				['text-box-trim', 'a { text-box-trim: inherit; }'],
+				['text-spacing-trim', 'a { text-spacing-trim: inherit; }'],
+				['text-wrap-mode', 'a { text-wrap-mode: inherit; }'],
+				['text-wrap-style', 'a { text-wrap-style: inherit; }'],
+				['overlay', 'a { overlay: inherit; }'],
+				['word-space-transform', 'a { word-space-transform: inherit; }'],
+				['reading-flow', 'a { reading-flow: inherit; }'],
+				['reading-order', 'a { reading-order: inherit; }'],
+				['dynamic-range-limit', 'a { dynamic-range-limit: inherit; }']
+			], ['source.css', 'meta.property-list.css', 'meta.property-name.css', 'support.type.property-name.css']);
+		});
+
+	});
 });

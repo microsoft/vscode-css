@@ -3203,6 +3203,30 @@
             | translate|unicode-bidi|unicode-range|user-select|user-zoom|vertical-align|visibility|white-space|widows|width|will-change
             | word-break|word-spacing|word-wrap|writing-mode|z-index|zoom
 
+            # Anchor positioning, scroll-driven animations, view transitions and other additions
+            | anchor-name|anchor-scope|position-anchor|position-area|position-try|position-try-fallbacks|position-try-order
+            | position-visibility
+            | animation-composition|animation-timeline
+            | animation-range|animation-range-start|animation-range-end
+            | scroll-timeline|scroll-timeline-axis|scroll-timeline-name|timeline-scope
+            | view-timeline|view-timeline-axis|view-timeline-inset|view-timeline-name
+            | view-transition-class|view-transition-name|view-transition-group
+            | view-transition-scope
+            | contain-intrinsic-block-size|contain-intrinsic-height|contain-intrinsic-inline-size
+            | contain-intrinsic-size|contain-intrinsic-width|content-visibility
+            | field-sizing|forced-color-adjust|print-color-adjust
+            | hyphenate-limit-chars|interpolate-size
+            | margin-trim|math-depth|math-shift|math-style|overlay
+            | scroll-initial-target|scroll-marker-group|scroll-target-group
+            | text-autospace|text-box|text-box-edge|text-box-trim|text-spacing-trim
+            | text-wrap-mode|text-wrap-style|word-space-transform
+            | reading-flow|reading-order|dynamic-range-limit
+            | corner-shape
+            | corner-top-left-shape|corner-top-right-shape
+            | corner-bottom-right-shape|corner-bottom-left-shape
+            | corner-start-start-shape|corner-start-end-shape
+            | corner-end-start-shape|corner-end-end-shape
+
             # SVG attributes
             | alignment-baseline|baseline-shift|clip-rule|color-interpolation|color-interpolation-filters|color-profile
             | color-rendering|cx|cy|dominant-baseline|enable-background|fill|fill-opacity|fill-rule|flood-color|flood-opacity
