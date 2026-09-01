@@ -65,5 +65,21 @@ export default {
 		}
 
 		return tokenizedLines;
+	},
+	// The scope names left on the tokenizer's rule stack once the whole text
+	// has been tokenized. A well-behaved grammar closes everything it opens, so
+	// this is `['source.css']` unless a rule leaked past the end of the input.
+	scopeStackAtEnd: function scopeStackAtEnd(text) {
+		const lines = text.split(/\r\n|\r|\n/g);
+
+		let ruleStack = vsctm.INITIAL;
+		for (let i = 0; i < lines.length; i++) {
+			ruleStack = grammar.tokenizeLine(lines[i], ruleStack).ruleStack;
+		}
+
+		// The scopes an editor would report for the next character, rather than
+		// one entry per rule frame: an unnamed frame inherits its ancestor's
+		// name, so walking frames reports duplicates that no token ever carries.
+		return ruleStack.contentNameScopesList.getScopeNames();
 	}
 }
