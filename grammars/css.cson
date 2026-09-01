@@ -2364,12 +2364,35 @@
             | color-index
             | monochrome
             | resolution
+            | horizontal-viewport-segments
+            | vertical-viewport-segments
           )
           | grid                    # Discrete features
           | scan
           | orientation
           | display-mode
           | hover
+          | any-hover               # Interaction (Media Queries 4)
+          | pointer
+          | any-pointer
+          | update
+          | overflow-block
+          | overflow-inline
+          | prefers-color-scheme    # User preference (Media Queries 5)
+          | prefers-contrast
+          | prefers-reduced-motion
+          | prefers-reduced-transparency
+          | prefers-reduced-data
+          | forced-colors
+          | inverted-colors
+          | dynamic-range
+          | video-dynamic-range
+          | scripting
+          | color-gamut
+          | video-color-gamut
+          | environment-blending
+          | nav-controls
+          | ua-color-scheme
         )
         |
         # Deprecated features
@@ -2430,6 +2453,33 @@
         | minimal-ui
         | browser
         | hover
+        | none                      # Interaction / preference values
+        | coarse
+        | fine
+        | slow
+        | fast
+        | light                     # prefers-color-scheme
+        | dark
+        | no-preference             # prefers-* neutral value
+        | reduce                    # prefers-reduced-*
+        | more                      # prefers-contrast
+        | less
+        | custom
+        | active                    # forced-colors
+        | enabled                   # scripting
+        | initial-only
+        | srgb                      # color-gamut
+        | p3
+        | rec2020
+        | standard                  # dynamic-range
+        | high
+        | scroll                    # overflow-block / overflow-inline
+        | paged
+        | inverted                  # inverted-colors
+        | back                      # nav-controls
+        | opaque                    # environment-blending
+        | additive
+        | subtractive
       )
       (?=\\s|\\)|$)
     '''

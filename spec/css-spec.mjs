@@ -5973,4 +5973,124 @@ describe('CSS grammar', function () {
 		});
 
 	});
+
+	describe('media features', function () {
+
+		function eachSel(cases, want) {
+			cases.forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[1]).tokens;
+				var token = tokens.find(x => x.value === pair[0]);
+				assert.ok(token, pair[0] + ' produced no token in: ' + pair[1]);
+				assert.deepStrictEqual(token.scopes, want, pair[1]);
+			});
+		}
+
+		it('recognises interaction media features', function () {
+			['pointer', 'any-pointer', 'hover', 'any-hover', 'update', 'scripting'].forEach(function (mf) {
+				var tokens = testGrammar.tokenizeLine('@media (' + mf + ': none) {}').tokens;
+				var t = tokens.find(x => x.value === mf);
+				assert.deepStrictEqual(t.scopes, ['source.css', 'meta.at-rule.media.header.css', 'support.type.property-name.media.css'], mf);
+			});
+		});
+
+		it('recognises user-preference media features', function () {
+			['prefers-color-scheme', 'prefers-contrast', 'prefers-reduced-motion', 'forced-colors', 'dynamic-range'].forEach(function (mf) {
+				var tokens = testGrammar.tokenizeLine('@media (' + mf + ': none) {}').tokens;
+				var t = tokens.find(x => x.value === mf);
+				assert.deepStrictEqual(t.scopes, ['source.css', 'meta.at-rule.media.header.css', 'support.type.property-name.media.css'], mf);
+			});
+		});
+
+		it('treats viewport segments as range features', function () {
+			[
+				'horizontal-viewport-segments',
+				'min-horizontal-viewport-segments',
+				'max-horizontal-viewport-segments',
+				'vertical-viewport-segments',
+				'min-vertical-viewport-segments',
+				'max-vertical-viewport-segments'
+			].forEach(function (mf) {
+				var tokens = testGrammar.tokenizeLine('@media (' + mf + ': 2) {}').tokens;
+				var t = tokens.find(x => x.value === mf);
+				assert.deepStrictEqual(t.scopes, ['source.css', 'meta.at-rule.media.header.css', 'support.type.property-name.media.css'], mf);
+			});
+
+			var tokens = testGrammar.tokenizeLine('@media (horizontal-viewport-segments > 1) {}').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '>').scopes, ['source.css', 'meta.at-rule.media.header.css', 'keyword.operator.comparison.css']);
+		});
+
+		it('recognises the values of each discrete media feature it names', function () {
+			// A feature name without its values is only half of the feature,
+			// so every name this change adds is paired with its values.
+			[
+				['overflow-block', 'paged'],
+				['overflow-block', 'scroll'],
+				['overflow-inline', 'scroll'],
+				['inverted-colors', 'inverted'],
+				['nav-controls', 'back'],
+				['video-color-gamut', 'p3'],
+				['ua-color-scheme', 'dark'],
+				['environment-blending', 'opaque'],
+				['environment-blending', 'additive'],
+				['environment-blending', 'subtractive'],
+				['scripting', 'initial-only'],
+				['update', 'slow'],
+				['prefers-color-scheme', 'dark'],
+				['prefers-reduced-motion', 'reduce'],
+				['prefers-contrast', 'more'],
+				['forced-colors', 'active'],
+				['color-gamut', 'p3'],
+				['dynamic-range', 'high']
+			].forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine('@media (' + pair[0] + ': ' + pair[1] + ') {}').tokens;
+				assert.deepStrictEqual(tokens.find(x => x.value === pair[0]).scopes, ['source.css', 'meta.at-rule.media.header.css', 'support.type.property-name.media.css'], pair.join(': '));
+				assert.deepStrictEqual(tokens.find(x => x.value === pair[1]).scopes, ['source.css', 'meta.at-rule.media.header.css', 'support.constant.property-value.css'], pair.join(': '));
+			});
+		});
+
+		it('names every media feature it adds', function () {
+			eachSel([
+				['horizontal-viewport-segments', '@media (horizontal-viewport-segments: none) {}'],
+				['any-pointer', '@media (any-pointer: none) {}'],
+				['update', '@media (update: none) {}'],
+				['prefers-contrast', '@media (prefers-contrast: none) {}'],
+				['video-color-gamut', '@media (video-color-gamut: srgb) {}'],
+				['ua-color-scheme', '@media (ua-color-scheme: light) {}'],
+				['prefers-reduced-motion', '@media (prefers-reduced-motion: none) {}'],
+				['prefers-reduced-transparency', '@media (prefers-reduced-transparency: none) {}'],
+				['prefers-reduced-data', '@media (prefers-reduced-data: none) {}'],
+				['forced-colors', '@media (forced-colors: none) {}'],
+				['inverted-colors', '@media (inverted-colors: none) {}'],
+				['dynamic-range', '@media (dynamic-range: none) {}'],
+				['video-dynamic-range', '@media (video-dynamic-range: none) {}'],
+				['scripting', '@media (scripting: none) {}'],
+				['color-gamut', '@media (color-gamut: none) {}'],
+				['environment-blending', '@media (environment-blending: none) {}']
+			], ['source.css', 'meta.at-rule.media.header.css', 'support.type.property-name.media.css']);
+		});
+
+		it('recognises every media feature value it adds', function () {
+			eachSel([
+				['no-preference', '@media (prefers-reduced-motion: no-preference) {}'],
+				['coarse', '@media (any-pointer: coarse) {}'],
+				['fine', '@media (any-pointer: fine) {}'],
+				['slow', '@media (update: slow) {}'],
+				['fast', '@media (update: fast) {}'],
+				['more', '@media (prefers-contrast: more) {}'],
+				['less', '@media (prefers-contrast: less) {}'],
+				['custom', '@media (prefers-contrast: custom) {}'],
+				['initial-only', '@media (scripting: initial-only) {}'],
+				['rec2020', '@media (color-gamut: rec2020) {}'],
+				['standard', '@media (dynamic-range: standard) {}'],
+				['high', '@media (dynamic-range: high) {}'],
+				['paged', '@media (overflow-block: paged) {}'],
+				['enabled', '@media (scripting: enabled) {}'],
+				['light', '@media (prefers-color-scheme: light) {}'],
+				['active', '@media (forced-colors: active) {}'],
+				['none', '@media (forced-colors: none) {}'],
+				['srgb', '@media (color-gamut: srgb) {}']
+			], ['source.css', 'meta.at-rule.media.header.css', 'support.constant.property-value.css']);
+		});
+
+	});
 });
