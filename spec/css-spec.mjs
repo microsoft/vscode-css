@@ -5393,4 +5393,584 @@ describe('CSS grammar', function () {
 		});
 
 	});
+
+	describe('Selectors 4 and 5', function () {
+		it('accepts an `of` clause not separated from its selector by a space', function () {
+			// `of` is an identifier, so a class, id, attribute or comment may follow
+			// it directly. Requiring whitespace dropped the selector on the floor.
+			[['a:nth-child(2 of.x) {}', 'x', 'entity.other.attribute-name.class.css'],
+			 ['a:nth-child(2 of#x) {}', 'x', 'entity.other.attribute-name.id.css'],
+			 ['a:nth-child(2 of/*c*/.x) {}', 'x', 'entity.other.attribute-name.class.css']].forEach(function (probe) {
+				var tokens = testGrammar.tokenizeLine(probe[0]).tokens;
+				assert.deepStrictEqual(tokens.find(t => t.value === 'of').scopes, ['source.css', 'meta.selector.css', 'keyword.operator.logical.of.css'], probe[0]);
+				assert.deepStrictEqual(tokens.find(t => t.value === probe[1]).scopes, ['source.css', 'meta.selector.css', probe[2]], probe[0]);
+			});
+			var attr = testGrammar.tokenizeLine('a:nth-child(2 of[hidden]) {}').tokens;
+			assert.deepStrictEqual(attr.find(t => t.value === 'hidden').scopes, ['source.css', 'meta.selector.css', 'meta.attribute-selector.css', 'entity.other.attribute-name.css']);
+		});
+
+		it('closes every new functional selector', function () {
+			// Each of these rules is new on this branch and none of them had
+			// its closing parenthesis asserted, so the scope could be renamed
+			// without a failure.
+			[
+				['a:state(loading) {}', 5],
+				['a::part(button) {}', 5],
+				['a::highlight(search) {}', 5],
+				['a::view-transition-old(hero) {}', 5],
+				['a::scroll-button(next) {}', 5],
+				['a::slotted(.x) {}', 6]
+			].forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[0]).tokens;
+				assert.deepStrictEqual(tokens[pair[1]], {
+					scopes: [
+						'source.css',
+						'meta.selector.css',
+						'punctuation.section.function.end.bracket.round.css'
+					],
+					value: ')'
+				}, pair[0]);
+			});
+		});
+
+		it('gives a single-argument selector only its sole argument', function () {
+			// `:state()` takes one `<ident>`, `::highlight()` one
+			// `<custom-ident>`, `::scroll-button()` one direction and a
+			// view-transition pseudo-element one `<pt-name-selector>`. A second
+			// argument is invalid, so it is not scoped as one.
+			[
+				['a:state(foo bar) {}', 'bar'],
+				['a::highlight(foo bar) {}', 'bar'],
+				['a::scroll-button(up down) {}', 'down'],
+				['a::view-transition-old(foo bar) {}', 'bar']
+			].forEach(function (c) {
+				var tokens = testGrammar.tokenizeLine(c[0]).tokens;
+				assert.ok(!tokens.some(x => x.value === c[1] && x.scopes.some(sc => sc.startsWith('variable.parameter') || sc === 'support.constant.property-value.css')), c[0]);
+			});
+		});
+
+		it('takes more than one identifier in ::part() only', function () {
+			// css-shadow-parts-1 defines `::part( <ident># )`, so both names
+			// here are arguments.
+			var tokens = testGrammar.tokenizeLine('a::part(foo bar) {}').tokens;
+			['foo', 'bar'].forEach(function (name) {
+				assert.deepStrictEqual(tokens.find(x => x.value === name).scopes, ['source.css', 'meta.selector.css', 'variable.parameter.pseudo-element.css'], name);
+			});
+		});
+
+		it('requires a valid identifier start in a selector argument', function () {
+			// css-syntax-3: an ident sequence starts with an ident-start code
+			// point, two hyphens, or a hyphen and an ident-start code point.
+			// A lone hyphen, a digit after one hyphen, and a leading digit are
+			// none of those, and the matcher does not take the tail of one.
+			['a:state(-) {}', 'a:state(-1foo) {}', 'a:state(1foo) {}'].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				assert.ok(!tokens.some(x => x.scopes.includes('variable.parameter.state-name.css')), line);
+			});
+			var ok = testGrammar.tokenizeLine('a:state(--x) {}').tokens;
+			assert.deepStrictEqual(ok.find(x => x.value === '--x').scopes, ['source.css', 'meta.selector.css', 'variable.parameter.state-name.css']);
+		});
+
+		it('does not take a reserved word as a custom identifier', function () {
+			// css-values-4: the CSS-wide keywords are not valid
+			// `<custom-ident>`s, and `default` is reserved as well.
+			['default', 'initial', 'inherit', 'unset', 'revert', 'revert-layer'].forEach(function (word) {
+				['a::highlight(' + word + ') {}', 'a::view-transition-old(' + word + ') {}'].forEach(function (line) {
+					var tokens = testGrammar.tokenizeLine(line).tokens;
+					assert.ok(!tokens.some(x => x.scopes.includes('variable.parameter.pseudo-element.css')), line);
+				});
+			});
+			// `:state()` takes an `<ident>`, which has no such exclusion.
+			var tokens = testGrammar.tokenizeLine('a:state(default) {}').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'default').scopes, ['source.css', 'meta.selector.css', 'variable.parameter.state-name.css']);
+		});
+
+		it('does not read a class selector as a view-transition name', function () {
+			// `<pt-name-selector>` is `'*' | <custom-ident>`. The class
+			// additions in css-view-transitions-2 are not implemented here, so
+			// a class is left to tokenize as an ordinary class selector.
+			var tokens = testGrammar.tokenizeLine('a::view-transition-old(.active) {}').tokens;
+			assert.ok(!tokens.some(x => x.scopes.includes('variable.parameter.pseudo-element.css')));
+		});
+
+		it('reads a comment before a selector argument', function () {
+			[
+				['a:state(/*c*/ foo) {}', 'foo', 'variable.parameter.state-name.css'],
+				['a::highlight(/*c*/ foo) {}', 'foo', 'variable.parameter.pseudo-element.css'],
+				['a::scroll-button(/*c*/ up) {}', 'up', 'support.constant.property-value.css'],
+				['a::view-transition-old(/*c*/ *) {}', '*', 'entity.name.tag.wildcard.css'],
+				['a::scroll-button(/*c*/ *) {}', '*', 'entity.name.tag.wildcard.css'],
+				['a:local-link(/*c*/ 2) {}', '2', 'constant.numeric.css']
+			].forEach(function (c) {
+				var tokens = testGrammar.tokenizeLine(c[0]).tokens;
+				assert.deepStrictEqual(tokens.find(x => x.value === c[1]).scopes, ['source.css', 'meta.selector.css', c[2]], c[0]);
+				assert.deepStrictEqual(tokens.find(x => x.value === 'c').scopes, ['source.css', 'meta.selector.css', 'comment.block.css'], c[0]);
+			});
+		});
+
+		it('reads a comment after a selector argument', function () {
+			// The argument is still the sole argument, so it keeps its scope,
+			// and the comment is a comment rather than part of it.
+			[
+				['a:state(foo /*c*/) {}', 'foo', 'variable.parameter.state-name.css'],
+				['a::highlight(foo /*c*/) {}', 'foo', 'variable.parameter.pseudo-element.css'],
+				['a::part(foo /*c*/) {}', 'foo', 'variable.parameter.pseudo-element.css'],
+				['a::scroll-button(up /*c*/) {}', 'up', 'support.constant.property-value.css'],
+				['a::view-transition-old(foo /*c*/) {}', 'foo', 'variable.parameter.pseudo-element.css'],
+				['a:local-link(2 /*c*/) {}', '2', 'constant.numeric.css']
+			].forEach(function (c) {
+				var tokens = testGrammar.tokenizeLine(c[0]).tokens;
+				assert.deepStrictEqual(tokens.find(x => x.value === c[1]).scopes, ['source.css', 'meta.selector.css', c[2]], c[0]);
+				assert.deepStrictEqual(tokens.find(x => x.value === 'c').scopes, ['source.css', 'meta.selector.css', 'comment.block.css'], c[0]);
+			});
+		});
+
+		it('reads a selector argument written on its own line', function () {
+			// A `\G` anchor does not survive a line break, so the matchers
+			// take a line start as well: a wrapped selector is still valid.
+			[
+				['a:state(\n\tfoo\n) {}', 'foo', 'variable.parameter.state-name.css'],
+				['a::highlight(\n\tfoo\n) {}', 'foo', 'variable.parameter.pseudo-element.css'],
+				['a::part(\n\tfoo\n) {}', 'foo', 'variable.parameter.pseudo-element.css'],
+				['a::scroll-button(\n\tup\n) {}', 'up', 'support.constant.property-value.css'],
+				['a::scroll-button(\n\t*\n) {}', '*', 'entity.name.tag.wildcard.css'],
+				['a::view-transition-old(\n\tfoo\n) {}', 'foo', 'variable.parameter.pseudo-element.css'],
+				['a::view-transition-old(\n\t*\n) {}', '*', 'entity.name.tag.wildcard.css'],
+				['a:local-link(\n\t2\n) {}', '2', 'constant.numeric.css']
+			].forEach(function (c) {
+				var lines = testGrammar.tokenizeLines(c[0]);
+				var token = lines[1].find(x => x.value === c[1]);
+				assert.deepStrictEqual(token && token.scopes, ['source.css', 'meta.selector.css', c[2]], c[0]);
+			});
+		});
+
+		it('does not read a keyword written as an escape', function () {
+			// A keyword list is written out, so `up` spelled `\75 p` and `of`
+			// spelled `\6f f` are not recognised. Nothing is scoped wrongly:
+			// the argument is simply left alone, as it is on `main`.
+			[
+				['a::scroll-button(\\75 p) {}', 'support.constant.property-value.css'],
+				['a:nth-child(2n \\6f f a) {}', 'keyword.operator.logical.of.css']
+			].forEach(function (c) {
+				var tokens = testGrammar.tokenizeLine(c[0]).tokens;
+				assert.ok(!tokens.some(x => x.scopes.includes(c[1])), c[0]);
+			});
+		});
+
+		it('takes a non-negative integer in the functional :local-link()', function () {
+			// selectors-5: "As a functional pseudo-class, :local-link() can
+			// also accept a non-negative integer as its sole argument".
+			var tokens = testGrammar.tokenizeLine('a:local-link(2) {}').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === ':').scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css', 'punctuation.definition.entity.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'local-link').scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === '(').scopes, ['source.css', 'meta.selector.css', 'punctuation.section.function.begin.bracket.round.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === ')').scopes, ['source.css', 'meta.selector.css', 'punctuation.section.function.end.bracket.round.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === '2').scopes, ['source.css', 'meta.selector.css', 'constant.numeric.css']);
+			['a:local-link(-1) {}', 'a:local-link(2 3) {}'].forEach(function (line) {
+				var bad = testGrammar.tokenizeLine(line).tokens;
+				assert.ok(!bad.some(x => x.scopes.includes('constant.numeric.css')), line);
+			});
+		});
+
+		it('does not treat a longer identifier as a selector it adds', function () {
+			// Each name list has to stop at a word boundary. Without one,
+			// `:local-linkish` and `::view-transition-oldish` pick up the
+			// scopes that belong to the shorter names they start with.
+			['a:local-linkish {}', 'a::view-transition-oldish {}'].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				assert.ok(!tokens.some(x => x.scopes.some(sc => sc.startsWith('entity.other.attribute-name.pseudo'))), line);
+			});
+		});
+
+		it('keeps pseudo-classes deferred to Selectors 5', function () {
+			['blank', 'local-link'].forEach(function (pseudoClass) {
+				var tokens = testGrammar.tokenizeLine('a:' + pseudoClass + ' {}').tokens;
+				assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css'], value: pseudoClass });
+			});
+		});
+
+		it('releases the closing parenthesis of an of clause', function () {
+			// `:nth-child(An+B of S)` ends the selector subregion before the
+			// pseudo-class rule closes, and that release was unpinned.
+			var tokens = testGrammar.tokenizeLine('a:nth-child(2 of .x) {}').tokens;
+			assert.deepStrictEqual(tokens[6], {
+				scopes: ['source.css', 'meta.selector.css', 'keyword.operator.logical.of.css'],
+				value: 'of'
+			});
+			assert.deepStrictEqual(tokens[10], {
+				scopes: [
+					'source.css',
+					'meta.selector.css',
+					'punctuation.section.function.end.bracket.round.css'
+				],
+				value: ')'
+			});
+		});
+
+		it('tokenizes ::part() and ::slotted()', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a::part(btn) {}').tokens;
+			assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css'], value: 'part' });
+			assert.deepStrictEqual(tokens[4], { scopes: ['source.css', 'meta.selector.css', 'variable.parameter.pseudo-element.css'], value: 'btn' });
+
+			tokens = testGrammar.tokenizeLine('a::slotted(.x) {}').tokens;
+			assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css'], value: 'slotted' });
+			assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'], value: 'x' });
+		});
+
+		it('tokenizes :state() with a custom identifier', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a:state(loading) {}').tokens;
+			assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css'], value: 'state' });
+			assert.deepStrictEqual(tokens[4], { scopes: ['source.css', 'meta.selector.css', 'variable.parameter.state-name.css'], value: 'loading' });
+		});
+
+		it('tokenizes additional pseudo-classes', function () {
+			['popover-open', 'user-valid', 'user-invalid', 'placeholder-shown', 'autofill', 'modal', 'defined', 'open'].forEach(function (pc) {
+				var tokens = testGrammar.tokenizeLine('a:' + pc + ' {}').tokens;
+				assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css'], value: pc });
+			});
+		});
+
+		it('tokenizes additional pseudo-elements', function () {
+			['details-content', 'file-selector-button', 'target-text', 'backdrop', 'marker'].forEach(function (pe) {
+				var tokens = testGrammar.tokenizeLine('a::' + pe + ' {}').tokens;
+				assert.deepStrictEqual(tokens[2], { scopes: ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css'], value: pe });
+			});
+		});
+
+		it('tokenizes functional :host() rather than the bare pseudo-class', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a:host(.dark) {}').tokens;
+			var host = tokens.find(t => t.value === 'host');
+			assert.deepStrictEqual(host.scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css']);
+			var open = tokens.find(t => t.value === '(');
+			assert.deepStrictEqual(open.scopes, ['source.css', 'meta.selector.css', 'punctuation.section.function.begin.bracket.round.css']);
+			var cls = tokens.find(t => t.value === 'dark');
+			assert.deepStrictEqual(cls.scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('tokenizes scroll marker position pseudo-classes', function () {
+			['target-before', 'target-current', 'target-after'].forEach(function (pseudoClass) {
+				var tokens = testGrammar.tokenizeLine('a:' + pseudoClass + ' {}').tokens;
+				assert.deepStrictEqual(tokens.find(x => x.value === pseudoClass).scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css'], pseudoClass);
+			});
+		});
+
+		it('tokenizes the `of` clause of :nth-child()', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a:nth-child(2 of .x) {}').tokens;
+			var of = tokens.find(t => t.value === 'of');
+			assert.deepStrictEqual(of.scopes, ['source.css', 'meta.selector.css', 'keyword.operator.logical.of.css']);
+			var cls = tokens.find(t => t.value === 'x');
+			assert.deepStrictEqual(cls.scopes, ['source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css']);
+		});
+
+		it('uses the argument grammar for each functional pseudo-element', function () {
+			var tokens = testGrammar.tokenizeLine('a::part(left)::view-transition-old(*)::scroll-button(next)::scroll-button(*) {}').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'left'), { scopes: ['source.css', 'meta.selector.css', 'variable.parameter.pseudo-element.css'], value: 'left' });
+			assert.deepStrictEqual(tokens.filter(x => x.value === '*').map(x => x.scopes), [
+				['source.css', 'meta.selector.css', 'entity.name.tag.wildcard.css'],
+				['source.css', 'meta.selector.css', 'entity.name.tag.wildcard.css']
+			]);
+			assert.deepStrictEqual(tokens.find(x => x.value === 'next'), { scopes: ['source.css', 'meta.selector.css', 'support.constant.property-value.css'], value: 'next' });
+
+			tokens = testGrammar.tokenizeLine('a::part(*) {}').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '*').scopes, ['source.css', 'meta.selector.css']);
+		});
+		it('accepts a universal or namespaced selector after an of clause', function () {
+			var tokens = testGrammar.tokenizeLine('li:nth-child(2 of*) { }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'of').scopes, ['source.css', 'meta.selector.css', 'keyword.operator.logical.of.css']);
+			assert.deepStrictEqual(tokens.find(x => x.value === '*').scopes, ['source.css', 'meta.selector.css', 'entity.name.tag.wildcard.css']);
+			var ns = testGrammar.tokenizeLine('li:nth-last-child(odd of*|div) { }').tokens;
+			assert.deepStrictEqual(ns.find(x => x.value === 'of').scopes, ['source.css', 'meta.selector.css', 'keyword.operator.logical.of.css']);
+			assert.deepStrictEqual(ns.find(x => x.value === 'div').scopes, ['source.css', 'meta.selector.css', 'entity.name.tag.css']);
+		});
+
+		it('accepts a leading escape in a custom identifier argument', function () {
+			// The class grammar already handles `.\_foo`, and these take the
+			// same custom identifier.
+			[
+				['::part(\\_foo) { }', 'variable.parameter.pseudo-element.css'],
+				[':state(\\_foo) { }', 'variable.parameter.state-name.css'],
+				['::highlight(\\_foo) { }', 'variable.parameter.pseudo-element.css'],
+				['::view-transition-old(\\_foo) { }', 'variable.parameter.pseudo-element.css']
+			].forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[0]).tokens;
+				assert.deepStrictEqual(tokens.find(x => x.value === '\\_').scopes, ['source.css', 'meta.selector.css', pair[1], 'constant.character.escape.css'], pair[0]);
+				assert.deepStrictEqual(tokens.find(x => x.value === 'foo').scopes, ['source.css', 'meta.selector.css', pair[1]], pair[0]);
+			});
+		});
+
+		it('marks a comma or a combinator in ::slotted() invalid', function () {
+			// ::slotted() takes one compound selector, not a selector list.
+			var list = testGrammar.tokenizeLine('::slotted(.a, .b) { }').tokens;
+			assert.deepStrictEqual(list.find(x => x.value === ',').scopes, ['source.css', 'meta.selector.css', 'invalid.illegal.comma.css']);
+			var child = testGrammar.tokenizeLine('::slotted(.a > .b) { }').tokens;
+			assert.deepStrictEqual(child.find(x => x.value === '>').scopes, ['source.css', 'meta.selector.css', 'invalid.illegal.combinator.css']);
+			var ok = testGrammar.tokenizeLine('::slotted(span.a) { }').tokens;
+			assert.deepStrictEqual(ok.find(x => x.value === 'span').scopes, ['source.css', 'meta.selector.css', 'entity.name.tag.css']);
+		});
+
+		// Every name this change adds to a list is asserted here, so that
+		// removing one from the grammar fails a test.
+		function eachSel(cases, want) {
+			cases.forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[1]).tokens;
+				var token = tokens.find(x => x.value === pair[0]);
+				assert.ok(token, pair[0] + ' produced no token in: ' + pair[1]);
+				assert.deepStrictEqual(token.scopes, want, pair[1]);
+			});
+		}
+
+		it('names every pseudo-class it adds', function () {
+			eachSel([
+				['picture-in-picture', 'a:picture-in-picture {}'],
+				['unchecked', 'a:unchecked {}'],
+				['volume-locked', 'a:volume-locked {}'],
+				['autofill', 'a:autofill {}'],
+				['blank', 'a:blank {}'],
+				['buffering', 'a:buffering {}'],
+				['current', 'a:current {}'],
+				['defined', 'a:defined {}'],
+				['future', 'a:future {}'],
+				['local-link', 'a:local-link {}'],
+				['modal', 'a:modal {}'],
+				['muted', 'a:muted {}'],
+				['past', 'a:past {}'],
+				['paused', 'a:paused {}'],
+				['placeholder-shown', 'a:placeholder-shown {}'],
+				['playing', 'a:playing {}'],
+				['popover-open', 'a:popover-open {}'],
+				['seeking', 'a:seeking {}'],
+				['stalled', 'a:stalled {}'],
+				['target-after', 'a:target-after {}'],
+				['target-before', 'a:target-before {}'],
+				['target-current', 'a:target-current {}'],
+				['user-invalid', 'a:user-invalid {}'],
+				['user-valid', 'a:user-valid {}'],
+				['visited', 'a:visited {}']
+			], ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css']);
+		});
+
+		it('names every pseudo-element it adds', function () {
+			eachSel([
+				['scroll-marker-group', 'a::scroll-marker-group {}'],
+				['view-transition', 'a::view-transition {}'],
+				['checkmark', 'a::checkmark {}'],
+				['details-content', 'a::details-content {}'],
+				['file-selector-button', 'a::file-selector-button {}'],
+				['picker-icon', 'a::picker-icon {}'],
+				['scroll-marker', 'a::scroll-marker {}'],
+				['spelling-error', 'a::spelling-error {}'],
+				['target-text', 'a::target-text {}'],
+				['column', 'a::column {}']
+			], ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css']);
+		});
+
+		it('names the functional pseudo-class it adds', function () {
+			eachSel([
+				['host-context', 'a:host-context(.x) {}']
+			], ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-class.css']);
+		});
+
+		it('names every functional pseudo-element it adds', function () {
+			eachSel([
+				['part', 'a::part(n) {}'],
+				['view-transition-group', 'a::view-transition-group(n) {}'],
+				['view-transition-group-children', 'a::view-transition-group-children(n) {}'],
+				['view-transition-image-pair', 'a::view-transition-image-pair(n) {}'],
+				['view-transition-new', 'a::view-transition-new(n) {}']
+			], ['source.css', 'meta.selector.css', 'entity.other.attribute-name.pseudo-element.css']);
+		});
+
+		it('recognises every scroll-button direction', function () {
+			eachSel([
+				['block-start', 'a::scroll-button(block-start) {}'],
+				['block-end', 'a::scroll-button(block-end) {}'],
+				['inline-start', 'a::scroll-button(inline-start) {}'],
+				['inline-end', 'a::scroll-button(inline-end) {}'],
+				['up', 'a::scroll-button(up) {}'],
+				['down', 'a::scroll-button(down) {}'],
+				['left', 'a::scroll-button(left) {}'],
+				['right', 'a::scroll-button(right) {}'],
+				['prev', 'a::scroll-button(prev) {}'],
+				['next', 'a::scroll-button(next) {}']
+			], ['source.css', 'meta.selector.css', 'support.constant.property-value.css']);
+		});
+
+		it('marks a combinator inside a compound-selector pseudo-class', function () {
+			// :host() and :host-context() each take a single compound selector,
+			// and the descendant combinator is written as whitespace.
+			[
+				[':host(.a > .b) {}', '>'],
+				[':host(.a + .b) {}', '+'],
+				[':host(.a ~ .b) {}', '~'],
+				[':host(.a || .b) {}', '||'],
+				[':host(.a .b) {}', ' '],
+				[':host(.a\t.b) {}', '\t'],
+				[':host(.a\f.b) {}', '\f'],
+				[':HOST(.a .b) {}', ' '],
+				[':Host-Context(.a .b) {}', ' '],
+				[':host-context(.a ~ .b) {}', '~'],
+				[':current(.a .b) {}', ' '],
+				[':current(.a, .b .c) {}', ' '],
+				[':host(.a/**/ .b) {}', ' '],
+				[':host(.\\61  .b) {}', ' '],
+				[':host(.\\\\61 .b) {}', ' '],
+				[':host(.\\\\61  .b) {}', '  '],
+				['::slotted(.a .b) {}', ' '],
+				['::slotted(.a > .b) {}', '>'],
+				['::slotted(.a || .b) {}', '||']
+			].forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[0]).tokens;
+				var token = tokens.find(x => x.scopes.includes('invalid.illegal.combinator.css'));
+				assert.ok(token, 'no combinator marked in: ' + pair[0]);
+				assert.strictEqual(token.value, pair[1], pair[0]);
+			});
+		});
+
+		it('marks a selector list where only one compound selector is allowed', function () {
+			[':host(.a, .b) {}', ':host-context(.a, .b) {}', '::slotted(.a, .b) {}'].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				var token = tokens.find(x => x.scopes.includes('invalid.illegal.comma.css'));
+				assert.ok(token, 'no comma marked in: ' + line);
+				assert.strictEqual(token.value, ',', line);
+			});
+		});
+
+		it('leaves a valid compound selector alone', function () {
+			// A compound selector has no combinator in it. Whitespace that
+			// terminates a hexadecimal escape belongs to the name before it, so
+			// `.\\61 .b` is the single compound selector `.a.b`.
+			[
+				':host(.a.b) {}',
+				'::slotted( .a ) {}',
+				':host(.a/**/.b) {}',
+				':host(.\\61 .b) {}',
+				':host(\\64 iv.x) {}',
+				'::slotted([data-x="a b"]) {}',
+				':host([title="a > b"]) {}',
+				':current(.a, .b) {}',
+				':host(.\\\\\\61 .b) {}',
+				':host(.\\\\\\\\\\61 .b) {}',
+				'::slotted(.\\61 .b) {}'
+			].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				assert.ok(!tokens.some(t => t.scopes.some(sc => sc.startsWith('invalid'))), line);
+			});
+		});
+
+		it('still allows a complex selector where one is valid', function () {
+			// These take complex selectors, or a list of them, so the compound
+			// selector restriction above must not reach them.
+			[
+				':is(.a .b) {}',
+				':not(.a .b) {}',
+				':has(.a .b) {}',
+				':where(.a .b) {}',
+				':matches(.a .b) {}',
+				':current(.a, .b) {}',
+				':is(.a, .b) {}'
+			].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				assert.ok(!tokens.some(t => t.scopes.some(sc => sc.startsWith('invalid'))), line);
+			});
+		});
+
+		it('keeps a compound-selector pseudo-class open across a nested function', function () {
+			// The closing bracket of a nested function does not end :host().
+			var tokens = testGrammar.tokenizeLine(':host(:not(.a)) .b {}').tokens;
+			var token = tokens.find(x => x.value === 'b');
+			assert.deepStrictEqual(token.scopes, [
+				'source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'
+			]);
+		});
+
+		it('punctuates every functional selector it adds', function () {
+			// The name, its leading colons and both brackets are all scoped.
+			[
+				[':host', 'pseudo-class', ':host(.a) {}'],
+				[':host-context', 'pseudo-class', ':host-context(.a) {}'],
+				[':state', 'pseudo-class', ':state(a) {}'],
+				[':current', 'pseudo-class', ':current(.a) {}'],
+				['::part', 'pseudo-element', '::part(a) {}'],
+				['::highlight', 'pseudo-element', '::highlight(a) {}'],
+				['::slotted', 'pseudo-element', '::slotted(.a) {}'],
+				['::scroll-button', 'pseudo-element', '::scroll-button(up) {}'],
+				['::view-transition-group', 'pseudo-element', '::view-transition-group(a) {}'],
+				['::view-transition-group-children', 'pseudo-element', '::view-transition-group-children(a) {}'],
+				['::view-transition-image-pair', 'pseudo-element', '::view-transition-image-pair(a) {}'],
+				['::view-transition-new', 'pseudo-element', '::view-transition-new(a) {}'],
+				['::view-transition-old', 'pseudo-element', '::view-transition-old(a) {}']
+			].forEach(function (row) {
+				var colons = row[0].startsWith('::') ? '::' : ':';
+				var name = row[0].slice(colons.length);
+				var tokens = testGrammar.tokenizeLine(row[2]).tokens;
+				var base = ['source.css', 'meta.selector.css'];
+				assert.deepStrictEqual(tokens.find(x => x.value === name).scopes,
+					base.concat(['entity.other.attribute-name.' + row[1] + '.css']), row[2]);
+				assert.deepStrictEqual(tokens.find(x => x.value === colons).scopes,
+					base.concat(['entity.other.attribute-name.' + row[1] + '.css', 'punctuation.definition.entity.css']), row[2]);
+				assert.deepStrictEqual(tokens.find(x => x.value === '(').scopes,
+					base.concat(['punctuation.section.function.begin.bracket.round.css']), row[2]);
+				assert.deepStrictEqual(tokens.find(x => x.value === ')').scopes,
+					base.concat(['punctuation.section.function.end.bracket.round.css']), row[2]);
+			});
+		});
+
+		it('reads a comment inside every functional selector it adds', function () {
+			[
+				':state(/*c*/ a) {}',
+				'::part(/*c*/ a) {}',
+				'::highlight(/*c*/ a) {}',
+				'::view-transition-group(/*c*/ a) {}',
+				'::view-transition-old(/*c*/ a) {}',
+				'::scroll-button(/*c*/ up) {}'
+			].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				assert.ok(tokens.some(t => t.value === 'c' && t.scopes.includes('comment.block.css')),
+					'no comment in: ' + line);
+			});
+		});
+
+		it('keeps ::slotted() open across a nested function and a string', function () {
+			[
+				'::slotted(:not(.a)) .b {}',
+				'::slotted([title=")"]) .b {}'
+			].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, [
+					'source.css', 'meta.selector.css', 'entity.other.attribute-name.class.css'
+				], line);
+			});
+		});
+
+		it('names the parity keywords in a child-indexed function', function () {
+			['nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type'].forEach(function (fn) {
+				['even', 'odd'].forEach(function (kw) {
+					var line = 'a:' + fn + '(' + kw + ') {}';
+					var tokens = testGrammar.tokenizeLine(line).tokens;
+					assert.deepStrictEqual(tokens.find(x => x.value === kw).scopes,
+						['source.css', 'meta.selector.css', 'support.constant.parity.css'], line);
+				});
+			});
+		});
+
+		it('takes an of-clause only in the child-indexed functions', function () {
+			// :nth-child() and :nth-last-child() take `of <selector>`, the typed
+			// variants do not.
+			[':nth-child(2 of .x)', ':nth-last-child(2 of .x)'].forEach(function (sel) {
+				var tokens = testGrammar.tokenizeLine('a' + sel + ' {}').tokens;
+				assert.ok(tokens.some(t => t.value === 'of' && t.scopes.includes('keyword.operator.logical.of.css')), sel);
+				assert.ok(tokens.some(t => t.value === 'x' && t.scopes.includes('entity.other.attribute-name.class.css')), sel);
+			});
+			[':nth-of-type(2 of .x)', ':nth-last-of-type(2 of .x)'].forEach(function (sel) {
+				var tokens = testGrammar.tokenizeLine('a' + sel + ' {}').tokens;
+				assert.ok(!tokens.some(t => t.scopes.includes('keyword.operator.logical.of.css')), sel);
+				assert.ok(!tokens.some(t => t.value === 'x' && t.scopes.includes('entity.other.attribute-name.class.css')), sel);
+			});
+		});
+
+	});
 });

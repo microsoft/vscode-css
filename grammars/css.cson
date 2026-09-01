@@ -1104,6 +1104,81 @@
       '0':
         'name': 'punctuation.definition.comment.end.css'
     'name': 'comment.block.css'
+  'compound-selector-innards':
+    'patterns': [
+      {
+        'match': '>|\\+|~|\\|\\|'
+        'name': 'invalid.illegal.combinator.css'
+      }
+      {
+        # The descendant combinator is written as whitespace, so it is only
+        # one where a selector ends and another begins. A hexadecimal escape
+        # takes at most one whitespace to terminate it, and that one belongs
+        # to the name before it, so `.\\61 .b` is a single compound selector.
+        # A backslash run of even length is escaped backslashes rather than an
+        # escape, so `.\\\\61 .b` is two selectors. Past two such runs the
+        # whitespace is left alone rather than called a combinator, since
+        # missing one reads better than calling valid CSS invalid.
+        'match': '''(?x)
+          (?<!
+              [^\\\\]\\\\[0-9a-fA-F]
+            | [^\\\\]\\\\[0-9a-fA-F]{2}
+            | [^\\\\]\\\\[0-9a-fA-F]{3}
+            | [^\\\\]\\\\[0-9a-fA-F]{4}
+            | [^\\\\]\\\\[0-9a-fA-F]{5}
+            | [^\\\\]\\\\[0-9a-fA-F]{6}
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{2}
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{3}
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{4}
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{5}
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{6}
+            | \\\\\\\\\\\\\\\\\\\\[0-9a-fA-F]
+            | \\\\\\\\\\\\\\\\\\\\[0-9a-fA-F]{2}
+            | \\\\\\\\\\\\\\\\\\\\[0-9a-fA-F]{3}
+            | \\\\\\\\\\\\\\\\\\\\[0-9a-fA-F]{4}
+            | \\\\\\\\\\\\\\\\\\\\[0-9a-fA-F]{5}
+            | \\\\\\\\\\\\\\\\\\\\[0-9a-fA-F]{6}
+          )
+          (?<=[^\\s(,>+~|])
+          [\\x20\\t\\f]+
+          (?=[.#\\[:*\\w-])
+        '''
+        'name': 'invalid.illegal.combinator.css'
+      }
+      {
+        # Whitespace left over once an escape has taken its terminator is a
+        # combinator after all, which is why `.\\61  .b` is two of them.
+        'match': '''(?x)
+          (?<=
+              [^\\\\]\\\\[0-9a-fA-F][\\x20\\t\\f]
+            | [^\\\\]\\\\[0-9a-fA-F]{2}[\\x20\\t\\f]
+            | [^\\\\]\\\\[0-9a-fA-F]{3}[\\x20\\t\\f]
+            | [^\\\\]\\\\[0-9a-fA-F]{4}[\\x20\\t\\f]
+            | [^\\\\]\\\\[0-9a-fA-F]{5}[\\x20\\t\\f]
+            | [^\\\\]\\\\[0-9a-fA-F]{6}[\\x20\\t\\f]
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F][\\x20\\t\\f]
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{2}[\\x20\\t\\f]
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{3}[\\x20\\t\\f]
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{4}[\\x20\\t\\f]
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{5}[\\x20\\t\\f]
+            | [^\\\\]\\\\\\\\\\\\[0-9a-fA-F]{6}[\\x20\\t\\f]
+          )
+          [\\x20\\t\\f]+
+          (?=[.#\\[:*\\w-])
+        '''
+        'name': 'invalid.illegal.combinator.css'
+      }
+      {
+        'include': '#string'
+      }
+      {
+        'include': '#balanced-selector-parens'
+      }
+      {
+        'include': '#selector-innards'
+      }
+    ]
   'escapes':
     'patterns': [
       {
@@ -1836,8 +1911,54 @@
         ]
       }
       {
+        # :host() and :host-context() each take a single compound selector,
+        # so a combinator or a comma in one of them is not valid.
+        'begin': '(?i)((:)(?:host-context|host))(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-class.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'match': ','
+            'name': 'invalid.illegal.comma.css'
+          }
+          {
+            'include': '#compound-selector-innards'
+          }
+        ]
+      }
+      {
+        # :current() takes a list of compound selectors, so a comma in it
+        # is valid where a combinator still is not.
+        'begin': '(?i)((:)current)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-class.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#compound-selector-innards'
+          }
+        ]
+      }
+      {
         # Child-indexed
-        'begin': '(?i)((:)nth-(?:last-)?(?:child|of-type))(\\()'
+        'begin': '(?i)((:)nth-(?:last-)?child)(\\()'
         'beginCaptures':
           '1':
             'name': 'entity.other.attribute-name.pseudo-class.css'
@@ -1857,6 +1978,367 @@
           {
             'match': '(?i)even|odd'
             'name': 'support.constant.parity.css'
+          }
+          {
+            # `of <selector>` syntax, e.g. :nth-child(2 of .visible)
+            'begin': '(?i)(?<=[\\s)]|\\*/)(of)(?=[\\s(:.#\\[*|]|/\\*|$)'
+            'beginCaptures':
+              '1':
+                'name': 'keyword.operator.logical.of.css'
+            'end': '(?=\\))'
+            'patterns': [
+              {
+                'include': '#selector-innards'
+              }
+            ]
+          }
+        ]
+      }
+      {
+        # Typed-child-indexed; :nth-of-type() takes no `of` clause
+        'begin': '(?i)((:)nth-(?:last-)?of-type)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-class.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'match': '(?i)[+-]?(\\d+n?|n)(\\s*[+-]\\s*\\d+)?'
+            'name': 'constant.numeric.css'
+          }
+          {
+            'match': '(?i)even|odd'
+            'name': 'support.constant.parity.css'
+          }
+        ]
+      }
+      {
+        # As a functional pseudo-class, `:local-link()` takes one
+        # non-negative integer.
+        'begin': '(?i)((:)local-link)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-class.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'match': '(?i)(?:\\G|^)((?:\\s|/\\*(?:[^*]|\\*[^/])*\\*/)*)(\\d+)(?=\\s*(?:\\)|/\\*|$))'
+            'captures':
+              '1':
+                'patterns': [
+                  {
+                    'include': '#comment-block'
+                  }
+                ]
+              '2':
+                'name': 'constant.numeric.css'
+          }
+          {
+            'include': '#comment-block'
+          }
+        ]
+      }
+      {
+        # :state() takes a custom identifier, not a selector list
+        'begin': '(?i)((:)state)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-class.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'match': '''(?xi) (?:\\G|^)
+              ( (?:\\s|/\\*(?:[^*]|\\*[^/])*\\*/)*        # Leading comments
+              )
+              ( (?: --                                  # An identifier starts with two
+                | -?                                  # hyphens, or one optional
+                  (?:[a-zA-Z_] | [^\\x00-\\x7F]         # hyphen and a letter, and
+                    |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+                  )                                   # any part of it may be an
+                )                                     # escape. A hexadecimal
+                (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]       # escape takes the
+                  |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+                )*                                    # whitespace that ends it.
+              )
+              (?= \\s*(?:\\)|/\\*|$) )                   # The sole argument
+            '''
+            'captures':
+              '1':
+                'patterns': [
+                  {
+                    'include': '#comment-block'
+                  }
+                ]
+              '2':
+                'name': 'variable.parameter.state-name.css'
+                'patterns': [
+                  {
+                    'include': '#escapes'
+                  }
+                ]
+          }
+          {
+            'include': '#comment-block'
+          }
+        ]
+      }
+    ]
+  'functional-pseudo-elements':
+    'patterns': [
+      {
+        # ::part() is the only one of these that takes more than one
+        # identifier: css-shadow-parts-1 defines it as `<ident>+`.
+        'begin': '(?i)((::)part)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': '''(?xi) (?<![-\\w])
+              ( (?: --
+                  | -?
+                    (?:[a-zA-Z_] | [^\\x00-\\x7F]
+                      |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+                    )
+                )
+                (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]
+                  |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+                )*
+              )
+              (?![-\\w])
+            '''
+            'captures':
+              '1':
+                'name': 'variable.parameter.pseudo-element.css'
+                'patterns': [
+                  {
+                    'include': '#escapes'
+                  }
+                ]
+          }
+        ]
+      }
+      {
+        # ::highlight() takes one custom identifier
+        'begin': '(?i)((::)highlight)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'match': '''(?xi) (?:\\G|^)
+              ( (?:\\s|/\\*(?:[^*]|\\*[^/])*\\*/)*        # Leading comments
+              )
+              ( (?! (?:initial|inherit|unset|revert|revert-layer|default)
+                    (?![-\\w])                          # Not a `<custom-ident>`
+                )
+                (?: --                                  # An identifier starts with two
+                | -?                                  # hyphens, or one optional
+                  (?:[a-zA-Z_] | [^\\x00-\\x7F]         # hyphen and a letter, and
+                    |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+                  )                                   # any part of it may be an
+                )                                     # escape. A hexadecimal
+                (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]       # escape takes the
+                  |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+                )*                                    # whitespace that ends it.
+              )
+              (?= \\s*(?:\\)|/\\*|$) )                   # The sole argument
+            '''
+            'captures':
+              '1':
+                'patterns': [
+                  {
+                    'include': '#comment-block'
+                  }
+                ]
+              '2':
+                'name': 'variable.parameter.pseudo-element.css'
+                'patterns': [
+                  {
+                    'include': '#escapes'
+                  }
+                ]
+          }
+          {
+            'include': '#comment-block'
+          }
+        ]
+      }
+      {
+        # View-transition pseudo-elements take a custom identifier or wildcard
+        'begin': '(?i)((::)(?:view-transition-group-children|view-transition-group|view-transition-image-pair|view-transition-new|view-transition-old))(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'match': '(?i)(?:\\G|^)((?:\\s|/\\*(?:[^*]|\\*[^/])*\\*/)*)(\\*)(?=\\s*(?:\\)|/\\*|$))'
+            'captures':
+              '1':
+                'patterns': [
+                  {
+                    'include': '#comment-block'
+                  }
+                ]
+              '2':
+                'name': 'entity.name.tag.wildcard.css'
+          }
+          {
+            'match': '''(?xi) (?:\\G|^)
+              ( (?:\\s|/\\*(?:[^*]|\\*[^/])*\\*/)*        # Leading comments
+              )
+              ( (?! (?:initial|inherit|unset|revert|revert-layer|default)
+                    (?![-\\w])                          # Not a `<custom-ident>`
+                )
+                (?: --                                  # An identifier starts with two
+                | -?                                  # hyphens, or one optional
+                  (?:[a-zA-Z_] | [^\\x00-\\x7F]         # hyphen and a letter, and
+                    |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+                  )                                   # any part of it may be an
+                )                                     # escape. A hexadecimal
+                (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]       # escape takes the
+                  |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+                )*                                    # whitespace that ends it.
+              )
+              (?= \\s*(?:\\)|/\\*|$) )                   # The sole argument
+            '''
+            'captures':
+              '1':
+                'patterns': [
+                  {
+                    'include': '#comment-block'
+                  }
+                ]
+              '2':
+                'name': 'variable.parameter.pseudo-element.css'
+                'patterns': [
+                  {
+                    'include': '#escapes'
+                  }
+                ]
+          }
+          {
+            'include': '#comment-block'
+          }
+        ]
+      }
+      {
+        # ::scroll-button() takes a physical or logical direction
+        'begin': '(?i)((::)scroll-button)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            'match': '(?i)(?:\\G|^)((?:\\s|/\\*(?:[^*]|\\*[^/])*\\*/)*)(\\*)(?=\\s*(?:\\)|/\\*|$))'
+            'captures':
+              '1':
+                'patterns': [
+                  {
+                    'include': '#comment-block'
+                  }
+                ]
+              '2':
+                'name': 'entity.name.tag.wildcard.css'
+          }
+          {
+            # css-overflow-5 gives `::scroll-button()` one direction, so only
+            # the sole argument is a direction.
+            'match': '(?i)(?:\\G|^)((?:\\s|/\\*(?:[^*]|\\*[^/])*\\*/)*)(block-start|block-end|inline-start|inline-end|up|down|left|right|prev|next)(?=\\s*(?:\\)|/\\*|$))'
+            'captures':
+              '1':
+                'patterns': [
+                  {
+                    'include': '#comment-block'
+                  }
+                ]
+              '2':
+                'name': 'support.constant.property-value.css'
+          }
+          {
+            'include': '#comment-block'
+          }
+        ]
+      }
+      {
+        # ::slotted() takes a compound selector
+        'begin': '(?i)((::)slotted)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'entity.other.attribute-name.pseudo-element.css'
+          '2':
+            'name': 'punctuation.definition.entity.css'
+          '3':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'patterns': [
+          {
+            # ::slotted() takes one compound selector, so a comma or a
+            # combinator in it is not valid.
+            'match': ','
+            'name': 'invalid.illegal.comma.css'
+          }
+          {
+            'include': '#compound-selector-innards'
           }
         ]
       }
@@ -2769,11 +3251,13 @@
         'name': 'invalid.illegal.colon.css'
     'match': '''(?xi)
       (:)(:*)
-      (?: active|any-link|checked|default|disabled|empty|enabled|first
-        | (?:first|last|only)-(?:child|of-type)|focus|focus-visible|focus-within|fullscreen|host|hover
-        | in-range|indeterminate|invalid|left|link|optional|out-of-range
-        | read-only|read-write|required|right|root|scope|target|unresolved
-        | valid|visited
+      (?: active|any-link|autofill|blank|buffering|checked|current|default|defined|disabled|empty|enabled|first
+        | (?:first|last|only)-(?:child|of-type)|focus|focus-visible|focus-within|fullscreen|future|host|hover
+        | in-range|indeterminate|invalid|left|link|local-link|modal|muted|open|optional|out-of-range
+        | past|paused|picture-in-picture|placeholder-shown|playing|popover-open
+        | read-only|read-write|required|right|root|scope|seeking|stalled|target|target-after|target-before|target-current
+        | unchecked
+        | unresolved|user-invalid|user-valid|valid|visited|volume-locked
       )(?![\\w-]|\\s*[;}])
     '''
     'name': 'entity.other.attribute-name.pseudo-class.css'
@@ -2798,13 +3282,22 @@
         |
         (::)                        # Double-colon only
         (?: backdrop
+          | checkmark
+          | column
           | content
+          | details-content
+          | file-selector-button
           | grammar-error
           | marker
+          | picker-icon
           | placeholder
+          | scroll-marker
+          | scroll-marker-group
           | selection
           | shadow
           | spelling-error
+          | target-text
+          | view-transition
         )
       )
       (?![\\w-]|\\s*[;}])
@@ -3192,13 +3685,16 @@
         ]
       }
       {
+        'include': '#functional-pseudo-classes'
+      }
+      {
         'include': '#pseudo-classes'
       }
       {
-        'include': '#pseudo-elements'
+        'include': '#functional-pseudo-elements'
       }
       {
-        'include': '#functional-pseudo-classes'
+        'include': '#pseudo-elements'
       }
       # Custom HTML elements
       {
