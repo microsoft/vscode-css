@@ -4895,4 +4895,502 @@ describe('CSS grammar', function () {
 			assert.deepStrictEqual(tokens.find(x => x.value === 'b').scopes, ['source.css', 'meta.at-rule.scope.header.css', 'meta.scope.limit.css', 'entity.other.attribute-name.id.css']);
 		});
 	});
+
+	describe('value functions', function () {
+		it('bounds an unterminated env() to a single argument name', function () {
+			// The name is the first argument, so the region that looks for it
+			// closes as soon as the first argument turns out not to be a name.
+			// Nothing on the line below an unterminated env() is scoped as one.
+			var lines = testGrammar.tokenizeLines('a { padding: env(\n.after > p { color: red; }');
+			assert.deepStrictEqual(lines[1].filter(t => t.scopes.includes('variable.argument.css')).map(t => t.value), []);
+		});
+
+		it('closes anchor() and anchor-size()', function () {
+			// The closing parenthesis of the anchor rule was the one part of
+			// it no test asserted, so its scope could be renamed freely.
+			var tokens = testGrammar.tokenizeLine('a { top: anchor(--x bottom); width: anchor-size(--x width); }').tokens;
+			[12, 23].forEach(function (index) {
+				assert.deepStrictEqual(tokens[index], {
+					scopes: [
+						'source.css',
+						'meta.property-list.css',
+						'meta.property-value.css',
+						'meta.function.anchor.css',
+						'punctuation.section.function.end.bracket.round.css'
+					],
+					value: ')'
+				}, 'token ' + index);
+			});
+		});
+
+		it('does not abandon the line when an env() argument cannot be named', function () {
+			// Before the argument region excluded the characters its own `end`
+			// matches, `begin` and `end` both matched at zero width and the
+			// tokenizer emitted the remainder of the line as a single token.
+			var prefix = ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css'];
+			var tokens = testGrammar.tokenizeLine('a { padding: env(;) }').tokens;
+			assert.deepStrictEqual(tokens.slice(9, 11), [
+				{ scopes: prefix, value: ';' },
+				{ scopes: prefix.concat('punctuation.section.function.end.bracket.round.css'), value: ')' }
+			]);
+
+			// An unbalanced `{` keeps the block open, exactly as it does for any
+			// other function, but the line is still tokenized to its end.
+			tokens = testGrammar.tokenizeLine('a { padding: env({) }').tokens;
+			assert.deepStrictEqual(tokens[9], { scopes: prefix.concat('punctuation.section.group.begin.bracket.curly.css'), value: '{' });
+			assert.deepStrictEqual(tokens[11], { scopes: prefix.concat('punctuation.section.group.end.bracket.curly.css'), value: '}' });
+		});
+
+		it('does not absorb whitespace into env() argument scopes', function () {
+			var prefix = ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css'];
+			assert.deepStrictEqual(testGrammar.tokenizeLine('a { padding: env( safe-area-inset-top ); }').tokens.slice(8, 12), [
+				{ scopes: prefix.concat('punctuation.section.function.begin.bracket.round.css'), value: '(' },
+				{ scopes: prefix, value: ' ' },
+				{ scopes: prefix.concat('support.constant.property-value.css'), value: 'safe-area-inset-top' },
+				{ scopes: prefix, value: ' ' }
+			]);
+
+			assert.deepStrictEqual(testGrammar.tokenizeLine('a { padding: env( --custom ); }').tokens.slice(8, 12), [
+				{ scopes: prefix.concat('punctuation.section.function.begin.bracket.round.css'), value: '(' },
+				{ scopes: prefix, value: ' ' },
+				{ scopes: prefix.concat('variable.argument.css'), value: '--custom' },
+				{ scopes: prefix, value: ' ' }
+			]);
+		});
+
+		it('does not scope env() fallback values as environment variables', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { padding: env(--custom, red); }').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === 'red').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'support.constant.color.w3c-standard-color-name.css']);
+			assert.ok(!tokens.find(t => t.value === 'red' && t.scopes.includes('variable.argument.css')));
+		});
+
+		it('keeps an escaped env() identifier in a single token', function () {
+			// `\61 bc` is one CSS identifier: the space terminates the hex escape.
+			var tokens = testGrammar.tokenizeLine('a { padding: env(\\61 bc, 1px); }').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.scopes.includes('variable.argument.css')), {
+				scopes: ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'variable.argument.css'],
+				value: '\\61 bc'
+			});
+		});
+
+		it('keeps functions that the css-values-5 draft still defines', function () {
+			// The draft defines the value-cycling function as `cycle()`;
+			// `toggle()` was its earlier name and no longer appears in it.
+			['progress', 'cycle'].forEach(function (fn) {
+				var tokens = testGrammar.tokenizeLine('a { width: ' + fn + '(1px, 2px); }').tokens;
+				var t = tokens.find(x => x.value === fn);
+				assert.deepStrictEqual(t.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'support.function.misc.css'], fn);
+			});
+		});
+
+		it('keeps nested functions scoped inside env() arguments', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { padding: env(--custom calc(1 + 1), 10px); }').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === 'calc').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'meta.function.calc.css', 'support.function.calc.css']);
+			assert.deepStrictEqual(tokens.find(t => t.value === '10').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'constant.numeric.css']);
+		});
+
+		it('recognises the timeline functions in a value', function () {
+			// The `animation-timeline` property name itself is left to
+			// microsoft/vscode-css#32; this covers the functions in its value.
+			['view', 'scroll'].forEach(function (fn) {
+				var tokens = testGrammar.tokenizeLine('a { animation-timeline: ' + fn + '(block); }').tokens;
+				assert.deepStrictEqual(tokens.find(x => x.value === fn).scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'support.function.misc.css'], fn);
+			});
+		});
+
+		it('scopes a custom color space in color-mix()', function () {
+			// <color-space> accepts a <dashed-ident> naming an @color-profile.
+			var tokens = testGrammar.tokenizeLine('a { color: color-mix(in --brand-space, red, blue); }').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === '--brand-space').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'variable.parameter.misc.css']);
+		});
+
+		it('scopes only the first argument of env() as the variable name', function () {
+			// css-env-1 is `env( <custom-ident> <integer>*, <declaration-value>? )`,
+			// so a second identifier is not a second environment variable name.
+			[
+				['a { padding: env(--x --y); }', '--x', '--y'],
+				['a { padding: env(safe-area-inset-top other); }', 'safe-area-inset-top', 'other']
+			].forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[0]).tokens;
+				assert.ok(tokens.find(t => t.value === pair[1] && t.scopes.length === 5), pair[0]);
+				assert.ok(!tokens.find(t => t.value.includes(pair[2]) && t.scopes.length > 4), pair[0]);
+			});
+		});
+
+		it('tokenizes additional math functions', function () {
+			['mod', 'rem', 'round'].forEach(function (fn) {
+				var tokens = testGrammar.tokenizeLine('a { width: ' + fn + '(10px, 3px); }').tokens;
+				var t = tokens.find(x => x.value === fn);
+				assert.deepStrictEqual(t.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.misc.css', 'support.function.misc.css'], fn);
+			});
+		});
+
+		it('tokenizes anchor() and anchor-size()', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { top: anchor(--x bottom); }').tokens;
+			var fn = tokens.find(t => t.value === 'anchor');
+			assert.deepStrictEqual(fn.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css', 'support.function.misc.css']);
+			var arg = tokens.find(t => t.value === '--x');
+			assert.deepStrictEqual(arg.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css', 'variable.argument.css']);
+
+			tokens = testGrammar.tokenizeLine('a { width: anchor-size(--x width); }').tokens;
+			var fn2 = tokens.find(t => t.value === 'anchor-size');
+			assert.deepStrictEqual(fn2.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css', 'support.function.misc.css']);
+		});
+
+		it('tokenizes color-mix() as a color function', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { color: color-mix(in oklch, red, blue); }').tokens;
+			var fn = tokens.find(t => t.value === 'color-mix');
+			assert.deepStrictEqual(fn.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'support.function.misc.css']);
+		});
+
+		it('tokenizes color-mix() interpolation keywords', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { color: color-mix(in oklch longer hue, red 40%, blue); }').tokens;
+			// `in`, the colorspace and the hue-interpolation method are not property
+			// values, so they need their own scope rather than falling through unscoped.
+			assert.deepStrictEqual(tokens.find(t => t.value === 'in').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'variable.parameter.misc.css']);
+			assert.deepStrictEqual(tokens.find(t => t.value === 'oklch').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'variable.parameter.misc.css']);
+			assert.deepStrictEqual(tokens.find(t => t.value === 'longer').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'variable.parameter.misc.css']);
+			assert.deepStrictEqual(tokens.find(t => t.value === 'red').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'support.constant.color.w3c-standard-color-name.css']);
+		});
+
+		it('tokenizes env() arguments separated from the bracket by a comment', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { padding: env(/* c */ safe-area-inset-top, 10px); }').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === 'safe-area-inset-top').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'support.constant.property-value.css']);
+			assert.deepStrictEqual(tokens.find(t => t.value === '/*').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'comment.block.css', 'punctuation.definition.comment.begin.css']);
+		});
+
+		it('tokenizes env() arguments written on a continuation line', function () {
+			var lines;
+			lines = testGrammar.tokenizeLines('a {\n\tpadding-top: env(\n\t\tsafe-area-inset-top,\n\t\t12px\n\t);\n}');
+			assert.deepStrictEqual(lines[2].find(t => t.value === 'safe-area-inset-top').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'support.constant.property-value.css']);
+
+			lines = testGrammar.tokenizeLines('a {\n\tpadding-top: env(\n\t\t--custom,\n\t\t12px\n\t);\n}');
+			assert.deepStrictEqual(lines[2].find(t => t.value === '--custom').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'variable.argument.css']);
+		});
+
+		it('tokenizes env() indices as numeric values', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { width: env(viewport-segment-width 0 0, 10px); }').tokens;
+			assert.deepStrictEqual(tokens.find(t => t.value === 'viewport-segment-width').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'support.constant.property-value.css']);
+			assert.deepStrictEqual(tokens.find(t => t.value === '0').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'constant.numeric.css']);
+		});
+
+		it('tokenizes env() with a known environment variable', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { padding: env(safe-area-inset-top); }').tokens;
+			var fn = tokens.find(t => t.value === 'env');
+			assert.deepStrictEqual(fn.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'support.function.misc.css']);
+			var arg = tokens.find(t => t.value === 'safe-area-inset-top');
+			assert.deepStrictEqual(arg.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'support.constant.property-value.css']);
+		});
+
+		it('tokenizes light-dark() as a color function', function () {
+			var tokens;
+			tokens = testGrammar.tokenizeLine('a { color: light-dark(white, black); }').tokens;
+			var fn = tokens.find(t => t.value === 'light-dark');
+			assert.deepStrictEqual(fn.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'support.function.misc.css']);
+		});
+
+		it('tokenizes the logical anchor-size() keywords', function () {
+			['block', 'inline', 'self-block', 'self-inline'].forEach(function (keyword) {
+				var tokens = testGrammar.tokenizeLine('a { width: anchor-size(--x ' + keyword + '); }').tokens;
+				var t = tokens.find(x => x.value === keyword);
+				assert.deepStrictEqual(t.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css', 'support.constant.property-value.css'], keyword);
+			});
+		});
+		it('keeps an escaped anchor name whole', function () {
+			// `--\61 nchor` is one dashed-ident spelling `--anchor`, and the
+			// space terminates the escape rather than the name.
+			var tokens = testGrammar.tokenizeLine('a { top: anchor(--\\61 nchor bottom); }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '--\\61 nchor').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css', 'variable.argument.css']);
+		});
+
+		it('keeps an escaped custom colour space whole', function () {
+			var tokens = testGrammar.tokenizeLine('a { color: color-mix(in --my\\2d space, red, blue); }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '--my\\2d space').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'variable.parameter.misc.css']);
+		});
+
+		it('does not take a later identifier for an environment variable name', function () {
+			// The name is the first component. If the first component cannot
+			// be a name then the call has none, and `red` is just a value.
+			['env(calc(foo) red)', 'env(var(--x) red)', 'env("bad" red)', 'env(10px red)'].forEach(function (call) {
+				var tokens = testGrammar.tokenizeLine('a { padding: ' + call + '; }').tokens;
+				var red = tokens.find(x => x.value === 'red');
+				assert.ok(!red.scopes.includes('variable.argument.css'), call + ' -> ' + JSON.stringify(red.scopes));
+				assert.ok(red.scopes.includes('support.constant.color.w3c-standard-color-name.css'), call + ' -> ' + JSON.stringify(red.scopes));
+			});
+		});
+
+		it('still scopes an environment variable name that is the first component', function () {
+			var tokens = testGrammar.tokenizeLine('a { padding: env(safe-area-inset-top, 0px); }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === 'safe-area-inset-top').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'support.constant.property-value.css']);
+			var custom = testGrammar.tokenizeLine('a { padding: env(--custom-name, 0px); }').tokens;
+			assert.deepStrictEqual(custom.find(x => x.value === '--custom-name').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'variable.argument.css']);
+		});
+
+		// Every name this change adds to a list is asserted here, so that
+		// removing one from the grammar fails a test.
+		function eachScopes(cases, tail) {
+			cases.forEach(function (pair) {
+				var tokens = testGrammar.tokenizeLine(pair[1]).tokens;
+				var token = tokens.find(x => x.value === pair[0]);
+				assert.ok(token, pair[0] + ' produced no token in: ' + pair[1]);
+				assert.deepStrictEqual(token.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css'].concat(tail), pair.join(' in '));
+			});
+		}
+
+		it('names every environment variable it adds', function () {
+			eachScopes([
+				['safe-area-inset-right', 'a { top: env(safe-area-inset-right); }'],
+				['safe-area-max-inset-top', 'a { top: env(safe-area-max-inset-top); }'],
+				['titlebar-area-x', 'a { top: env(titlebar-area-x); }'],
+				['keyboard-inset-height', 'a { top: env(keyboard-inset-height); }'],
+				['viewport-segment-width', 'a { top: env(viewport-segment-width); }'],
+				['preferred-text-scale', 'a { top: env(preferred-text-scale); }']
+			], ['meta.function.env.css', 'support.constant.property-value.css']);
+		});
+
+		it('names every color function it adds', function () {
+			eachScopes([
+				['color-mix', 'a { color: color-mix(in oklch, red, blue); }'],
+				['light-dark', 'a { color: light-dark(red, blue); }'],
+				['contrast-color', 'a { color: contrast-color(red); }'],
+				['device-cmyk', 'a { color: device-cmyk(0 0 0 1); }']
+			], ['meta.function.color.css', 'support.function.misc.css']);
+		});
+
+		it('names every value function it adds', function () {
+			eachScopes([
+				['mod', 'a { width: mod(x); }'],
+				['calc-size', 'a { width: calc-size(x); }'],
+				['calc-mix', 'a { width: calc-mix(x); }'],
+				['calc-interpolate', 'a { width: calc-interpolate(x); }'],
+				['random', 'a { width: random(x); }'],
+				['cycle', 'a { width: cycle(x); }'],
+				['palette-mix', 'a { width: palette-mix(x); }'],
+				['paint', 'a { background: paint(x); }'],
+				['sibling-index', 'a { width: sibling-index(x); }'],
+				['sibling-count', 'a { width: sibling-count(x); }'],
+				['random-item', 'a { width: random-item(--k, 1px, 2px); }']
+			], ['meta.function.misc.css', 'support.function.misc.css']);
+		});
+
+		it('names every anchor side it adds', function () {
+			eachScopes([
+				['self-start', 'a { top: anchor(--a self-start); }'],
+				['self-end', 'a { top: anchor(--a self-end); }'],
+				['self-block', 'a { width: anchor-size(--a self-block); }']
+			], ['meta.function.anchor.css', 'support.constant.property-value.css']);
+		});
+
+		it('reads an environment variable name that starts with a digit', function () {
+			// `env()` takes a `<custom-ident>`, and `--1foo` is one: a digit may
+			// follow the two hyphens even though it may not start a bare ident.
+			var tokens = testGrammar.tokenizeLine('a { padding: env(--1foo, 0px); }').tokens;
+			var token = tokens.find(x => x.value === '--1foo');
+			assert.deepStrictEqual(token.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'variable.argument.css']);
+		});
+
+		it('leaves an identifier alone in the colour functions that take no interpolation method', function () {
+			// `color-mix()` is the only one of these that takes a
+			// `<color-interpolation-method>`, so an identifier in the others is
+			// not a colour space and is left to `#property-values`.
+			['a { color: light-dark(foo, bar); }', 'a { color: contrast-color(foo); }', 'a { color: device-cmyk(foo 0 0 1); }'].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				var token = tokens.find(x => x.value.trim() === 'foo');
+				assert.deepStrictEqual(token.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css'], line);
+			});
+		});
+
+		it('reads a colour space in color-mix() only', function () {
+			var tokens = testGrammar.tokenizeLine('a { color: color-mix(in --brand-space, red, blue); }').tokens;
+			var token = tokens.find(x => x.value === '--brand-space');
+			assert.deepStrictEqual(token.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'variable.parameter.misc.css']);
+		});
+
+		it('keeps the anchor() and anchor-size() keyword sets apart', function () {
+			// `anchor()` takes an `<anchor-side>` and `anchor-size()` takes an
+			// `<anchor-size>`. The two sets are disjoint, so neither function
+			// takes the other's keywords. Only the keywords that are not also
+			// ordinary property values are checked: `top` is a property value
+			// in its own right, so `#property-values` scopes it in either
+			// function whatever this matcher does.
+			[
+				['a { top: anchor(--a width); }', 'width'],
+				['a { top: anchor(--a height); }', 'height'],
+				['a { top: anchor(--a self-block); }', 'self-block'],
+				['a { top: anchor(--a self-inline); }', 'self-inline'],
+				['a { width: anchor-size(--a self-start); }', 'self-start'],
+				['a { width: anchor-size(--a self-end); }', 'self-end']
+			].forEach(function (c) {
+				var tokens = testGrammar.tokenizeLine(c[0]).tokens;
+				assert.ok(!tokens.some(x => x.value === c[1] && x.scopes.includes('support.constant.property-value.css')), c[0]);
+			});
+		});
+
+		it('leaves the color functions that were already here alone', function () {
+			// The interpolation-keyword matcher is only on the functions this
+			// change adds, so an identifier in rgb() is scoped as it was.
+			var tokens = testGrammar.tokenizeLine('a { color: rgb(foo); }').tokens;
+			var token = tokens.find(x => x.value === 'foo');
+			assert.deepStrictEqual(token.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css']);
+		});
+
+		it('scopes an interpolation keyword in the color functions it adds', function () {
+			var tokens = testGrammar.tokenizeLine('a { color: color-mix(in oklch, red, blue); }').tokens;
+			var token = tokens.find(x => x.value === 'oklch');
+			assert.deepStrictEqual(token.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'variable.parameter.misc.css']);
+		});
+
+		it('does not name an env() argument that cannot be a name', function () {
+			// The name is the first argument. A dimension is not a name, and
+			// neither is a CSS-wide keyword, so neither is scoped as one and
+			// nor is anything after them.
+			['a { padding: env(-10px, red); }', 'a { padding: env(initial, red); }'].forEach(function (line) {
+				var tokens = testGrammar.tokenizeLine(line).tokens;
+				assert.deepStrictEqual(tokens.filter(t => t.scopes.includes('variable.argument.css')).map(t => t.value), [], line);
+			});
+		});
+
+		it('does not name an env() identifier from a following line', function () {
+			// The first argument is on the next line and is not a name, so the
+			// identifier after it is not promoted to one.
+			var lines = testGrammar.tokenizeLines('a { padding: env(\n\t10px red\n); }');
+			var named = lines.flat().filter(t => t.scopes.includes('variable.argument.css'));
+			assert.deepStrictEqual(named, []);
+		});
+
+		it('reads an anchor name that begins with a digit', function () {
+			// A `<dashed-ident>` is `--` and then any name characters, so a
+			// digit may follow the two hyphens.
+			var tokens = testGrammar.tokenizeLine('a { top: anchor(--1foo top); }').tokens;
+			var token = tokens.find(x => x.value === '--1foo');
+			assert.deepStrictEqual(token.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css', 'variable.argument.css']);
+		});
+
+		it('does not read an anchor name out of a longer identifier', function () {
+			var tokens = testGrammar.tokenizeLine('a { top: anchor(foo--bar top); }').tokens;
+			assert.ok(!tokens.some(t => t.scopes.includes('variable.argument.css')), 'read a name out of `foo--bar`');
+		});
+
+		it('ends an env() escape on a form feed', function () {
+			// A form feed is whitespace, so it terminates a hexadecimal
+			// escape rather than ending the name: `--\61\fb` is `--ab`, and
+			// the name does not stop short at the escape.
+			var tokens = testGrammar.tokenizeLine('a { padding: env(--\\61\fb); }').tokens;
+			var token = tokens.find(x => x.scopes.includes('variable.argument.css'));
+			assert.strictEqual(token.value, '--\\61\fb');
+		});
+
+		it('tokenizes every known environment variable name', function () {
+			var expected = ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'support.constant.property-value.css'];
+			var names = [].concat(
+				['top', 'right', 'bottom', 'left'].map(x => 'safe-area-inset-' + x),
+				['top', 'right', 'bottom', 'left'].map(x => 'safe-area-max-inset-' + x),
+				['x', 'y', 'width', 'height'].map(x => 'titlebar-area-' + x),
+				['top', 'right', 'bottom', 'left', 'width', 'height'].map(x => 'keyboard-inset-' + x),
+				['top', 'right', 'bottom', 'left', 'width', 'height'].map(x => 'viewport-segment-' + x),
+				['preferred-text-scale']
+			);
+			assert.strictEqual(names.length, 25);
+			names.forEach(function (name) {
+				var tokens = testGrammar.tokenizeLine('a { padding: env(' + name + ', red); }').tokens;
+				assert.deepStrictEqual(tokens.find(x => x.value === name).scopes, expected, name);
+			});
+		});
+
+		it('does not read a CSS-wide keyword as an environment variable name', function () {
+			['initial', 'inherit', 'unset', 'revert', 'revert-layer', 'default'].forEach(function (word) {
+				var tokens = testGrammar.tokenizeLine('a { padding: env(' + word + ', red); }').tokens;
+				var token = tokens.find(x => x.value === word);
+				assert.ok(token, word);
+				assert.ok(!token.scopes.includes('variable.argument.css'), word + ' was read as an environment variable name');
+			});
+			// A name that merely starts with one of them is still a name.
+			var tokens = testGrammar.tokenizeLine('a { padding: env(initial-position, red); }').tokens;
+			assert.ok(tokens.find(x => x.value === 'initial-position').scopes.includes('variable.argument.css'));
+		});
+
+		it('gives up on an environment variable name when the first component is a function', function () {
+			// The name is the first component, so a function in that position
+			// means there is no name and no later identifier may take its place.
+			var lines = testGrammar.tokenizeLines('a { padding: env(\n  /* before */ calc(x)\n  /* after */ red\n); }');
+			var found = lines[2].find(x => x.value === 'red');
+			assert.ok(found, 'red not tokenized');
+			assert.deepStrictEqual(lines[1].find(x => x.value === 'calc').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.env.css', 'meta.function.calc.css', 'support.function.calc.css']);
+			assert.ok(!found.scopes.includes('variable.argument.css'), 'a later line was read as the environment variable name');
+			assert.ok(found.scopes.includes('support.constant.color.w3c-standard-color-name.css'));
+		});
+
+		it('tokenizes every anchor and anchor-size keyword', function () {
+			// Each keyword is checked in the function that takes it: the
+			// `<anchor-side>` set belongs to `anchor()` and the `<anchor-size>`
+			// set to `anchor-size()`.
+			[
+				['anchor', ['top', 'right', 'bottom', 'left', 'center', 'start', 'end', 'self-start', 'self-end', 'inside', 'outside']],
+				['anchor-size', ['width', 'height', 'block', 'inline', 'self-block', 'self-inline']]
+			].forEach(function (pair) {
+				pair[1].forEach(function (keyword) {
+					var line = 'a { top: ' + pair[0] + '(--a ' + keyword + '); }';
+					var tokens = testGrammar.tokenizeLine(line).tokens.filter(x => x.value === keyword);
+					var token = tokens[tokens.length - 1];
+					assert.ok(token, pair[0] + ' ' + keyword);
+					assert.deepStrictEqual(token.scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css', 'support.constant.property-value.css'], pair[0] + ' ' + keyword);
+				});
+			});
+		});
+
+		it('takes a length or a colour as an anchor fallback', function () {
+			var head = ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css'];
+			var length = testGrammar.tokenizeLine('a { top: anchor(--a 10px); }').tokens;
+			assert.deepStrictEqual(length.find(x => x.value === '10').scopes, head.concat(['constant.numeric.css']));
+			assert.deepStrictEqual(length.find(x => x.value === 'px').scopes, head.concat(['constant.numeric.css', 'keyword.other.unit.px.css']));
+			var colour = testGrammar.tokenizeLine('a { top: anchor(--a red); }').tokens;
+			assert.deepStrictEqual(colour.find(x => x.value === 'red').scopes, head.concat(['support.constant.color.w3c-standard-color-name.css']));
+		});
+
+		it('scopes the brackets and the anchor name of anchor-size()', function () {
+			// `anchor-size()` is matched separately from `anchor()`, so its own
+			// brackets and name are asserted rather than assumed.
+			var head = ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css'];
+			var tokens = testGrammar.tokenizeLine('a { width: anchor-size(--a width); }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '(').scopes, head.concat(['punctuation.section.function.begin.bracket.round.css']));
+			assert.deepStrictEqual(tokens.find(x => x.value === ')').scopes, head.concat(['punctuation.section.function.end.bracket.round.css']));
+			assert.deepStrictEqual(tokens.find(x => x.value === '--a').scopes, head.concat(['variable.argument.css']));
+		});
+
+		it('takes a length or a keyword as an anchor-size fallback', function () {
+			var head = ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.anchor.css'];
+			var length = testGrammar.tokenizeLine('a { width: anchor-size(--a, 10px); }').tokens;
+			assert.deepStrictEqual(length.find(x => x.value === '10').scopes, head.concat(['constant.numeric.css']));
+			assert.deepStrictEqual(length.find(x => x.value === 'px').scopes, head.concat(['constant.numeric.css', 'keyword.other.unit.px.css']));
+			var keyword = testGrammar.tokenizeLine('a { width: anchor-size(--a, auto); }').tokens;
+			assert.deepStrictEqual(keyword.find(x => x.value === 'auto').scopes, head.concat(['support.constant.property-value.css']));
+		});
+
+		it('takes a custom colour space whose name starts with a digit', function () {
+			var tokens = testGrammar.tokenizeLine('a { color: color-mix(in --1foo, red, blue); }').tokens;
+			assert.deepStrictEqual(tokens.find(x => x.value === '--1foo').scopes, ['source.css', 'meta.property-list.css', 'meta.property-value.css', 'meta.function.color.css', 'variable.parameter.misc.css']);
+		});
+
+		it('marks the brackets of the colour and anchor functions', function () {
+			[
+				['a { color: rgb(0 0 0); }', 'meta.function.color.css'],
+				['a { color: color-mix(in --1foo, red, blue); }', 'meta.function.color.css'],
+				['a { top: anchor(--a top); }', 'meta.function.anchor.css']
+			].forEach(function (c) {
+				var tokens = testGrammar.tokenizeLine(c[0]).tokens;
+				var head = ['source.css', 'meta.property-list.css', 'meta.property-value.css', c[1]];
+				assert.deepStrictEqual(tokens.find(x => x.value === '(').scopes, head.concat(['punctuation.section.function.begin.bracket.round.css']), c[0]);
+				assert.deepStrictEqual(tokens.filter(x => x.value === ')')[0].scopes, head.concat(['punctuation.section.function.end.bracket.round.css']), c[0]);
+			});
+		});
+
+	});
 });

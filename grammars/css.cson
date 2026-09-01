@@ -1224,7 +1224,7 @@
       }
       # Colors
       {
-        'begin': '(?i)(?<![\\w-])(rgba?|rgb|hsla?|hsl|hwb|lab|oklab|lch|oklch|color)(\\()'
+        'begin': '(?i)(?<![\\w-])(rgba?|rgb|hsla?|hsl|hwb|lab|oklab|lch|oklch|color|light-dark|contrast-color|device-cmyk)(\\()'
         'beginCaptures':
           '1':
             'name': 'support.function.misc.css'
@@ -1238,6 +1238,46 @@
         'patterns': [
           {
             'include': '#property-values'
+          }
+        ]
+      }
+      # `color-mix()` is the only colour function that takes a
+      # `<color-interpolation-method>`, so it is a rule of its own: the
+      # identifier matcher below would otherwise reach colour functions that
+      # take no interpolation keywords at all.
+      {
+        'begin': '(?i)(?<![\\w-])(color-mix)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.misc.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.color.css'
+        'patterns': [
+          {
+            'include': '#property-values'
+          }
+          # Color-interpolation keywords (`in oklch`, `longer hue`) and relative-color
+          # idents are not property values, so without this they would be left
+          # unscoped. Identifiers only, so separators like `/` stay unscoped.
+          # A `<custom-color-space>` is a `<dashed-ident>`, so `in --brand-space`
+          # has to be accepted here too.
+          {
+            'match': '''(?xi) (?<![\\w-])
+              (?: --
+                | [a-z]
+                | \\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+              )
+              (?:[-\\w] | [^\\x00-\\x7F]
+                |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\r\\f]?|[^\\n])
+              )*
+              (?![\\w(-])
+            '''
+            'name': 'variable.parameter.misc.css'
           }
         ]
       }
@@ -1312,10 +1352,13 @@
       {
         'begin': '''(?xi) (?<![\\w-])
           (annotation|attr|blur|brightness|character-variant|clamp|contrast|counters?
-          |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate|color-mix
+          |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate
           |image-set|invert|local|max|min|minmax|opacity|ornaments|repeat|saturate|sepia
           |styleset|stylistic|swash|symbols
-          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign|if|style)
+          |cos|sin|tan|acos|asin|atan|atan2|hypot|sqrt|pow|log|exp|abs|sign|if|style
+          |mod|rem|round|calc-size|calc-mix|calc-interpolate|progress|cycle
+          |random|random-item
+          |palette-mix|paint|scroll|view|sibling-index|sibling-count)
           (\\()
         '''
         'beginCaptures':
@@ -1442,6 +1485,185 @@
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.custom.css'
         'patterns': [
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
+      # Environment variables
+      {
+        'begin': '(?i)(?<![\\w-])(env)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.misc.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.env.css'
+        'patterns': [
+          {
+            # The environment variable name is only the first argument, so it
+            # is matched as this region's `end`: the region skips whatever
+            # comments and line breaks precede the name, scopes it, and then
+            # closes, which stops a second identifier (`env(--a --b)`) from
+            # being scoped as a name too.
+            # The `begin` and the region's zero-width `end` alternative are
+            # both zero-width, so the characters the region can end on must be
+            # excluded from the ones it may begin on: otherwise `env(;` pushes
+            # and pops without advancing, which makes the tokenizer abandon the
+            # line and leak this rule to end-of-file.
+            # The name is the first component, so if the first component
+            # cannot be a name there is no name to find and the region must
+            # not start: otherwise it scopes a later identifier instead, as
+            # in `env(calc(foo) red)`.
+            'begin': '''(?xi) \\G
+              (?![,;{})])
+              (?=
+                \\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*
+                (?: (?!(?:initial|inherit|unset|revert|revert-layer|default)(?![-\\w]))  # A CSS-wide keyword is not a name,
+                    # though only as written: an escaped spelling of one is not
+                    # excluded, because there are too many to enumerate.
+                    (?:--(?:[-a-zA-Z0-9_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])) | -?(?:[a-zA-Z_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])))(?:[-a-zA-Z0-9_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n]))*
+                    (?![-\\w(])
+                  | $                    # The name may be on a later line
+                )
+              )
+            '''
+            'end': '''(?xi)
+              (?<![\\\\\\w-])                   # Not mid-identifier, not mid-escape
+              (?: ( safe-area-inset-(?:top|right|bottom|left)
+                  | safe-area-max-inset-(?:top|right|bottom|left)
+                  | titlebar-area-(?:x|y|width|height)
+                  | keyboard-inset-(?:top|right|bottom|left|width|height)
+                  | viewport-segment-(?:top|right|bottom|left|width|height)
+                  | preferred-text-scale
+                  )
+                  (?![\\w-])
+                | ( (?> (?!(?:initial|inherit|unset|revert|revert-layer|default)(?![-\\w])) (?:--(?:[-a-zA-Z0-9_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])) | -?(?:[a-zA-Z_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])))(?:[-a-zA-Z0-9_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n]))* )
+                    (?!\\()                    # A function is not a name
+                  )
+              )
+              | (?=[,;{})])                    # Malformed: give up on a name
+              # The name is the first component. If the first component is
+              # not a name then this function has no name, and the region has
+              # to close here rather than search on and scope a later
+              # identifier on a following line.
+              | (?= \\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*
+                    (?! (?!(?:initial|inherit|unset|revert|revert-layer|default)(?![-\\w])) (?:--(?:[-a-zA-Z0-9_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])) | -?(?:[a-zA-Z_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])))
+                        | /\\*                 # A comment is not the name either
+                    )
+                    \\S
+                )
+              # A function is not a name either, and it may be the first
+              # component on a line of its own, so the region has to close
+              # here rather than carry the search on to the next line.
+              | (?= \\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*
+                    (?:--(?:[-a-zA-Z0-9_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])) | -?(?:[a-zA-Z_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])))(?:[-a-zA-Z0-9_] | [^\\x00-\\x7F] |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n]))*
+                    \\(
+                )
+            '''
+            'endCaptures':
+              '1':
+                'name': 'support.constant.property-value.css'
+              '2':
+                'name': 'variable.argument.css'
+            'patterns': [
+              {
+                # Anything that is not the name: comments, the indices of
+                # `env(viewport-segment-width 0 0)`, strings, nested
+                # functions and malformed arguments.
+                'include': '#property-values'
+              }
+            ]
+          }
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
+      # Anchor positioning
+      {
+        'begin': '(?i)(?<![\\w-])(anchor)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.misc.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.anchor.css'
+        'patterns': [
+          {
+            # An anchor name is a `<dashed-ident>`, so any part of it may be
+            # written as an escape, and a hexadecimal escape takes the single
+            # whitespace character that terminates it.
+            'name': 'variable.argument.css'
+            'match': '''(?x)
+              (?<![\\w-])                            # Not the tail of `foo--bar`
+              --
+              (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # A digit may follow `--`
+                |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])
+              )*
+              (?![\\w-])
+            '''
+          }
+          {
+            # `anchor()` takes an `<anchor-side>`, which is a disjoint set from the `<anchor-size>` keywords `anchor-size()` takes.
+            'match': '''(?xi) (?<![\\w-])
+              (?: top|right|bottom|left|center|start|end|self-start|self-end
+                | inside|outside
+              )
+              (?![\\w-])
+            '''
+            'name': 'support.constant.property-value.css'
+          }
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
+      {
+        'begin': '(?i)(?<![\\w-])(anchor-size)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.misc.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.anchor.css'
+        'patterns': [
+          {
+            # An anchor name is a `<dashed-ident>`, so any part of it may be
+            # written as an escape, and a hexadecimal escape takes the single
+            # whitespace character that terminates it.
+            'name': 'variable.argument.css'
+            'match': '''(?x)
+              (?<![\\w-])                            # Not the tail of `foo--bar`
+              --
+              (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # A digit may follow `--`
+                |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])
+              )*
+              (?![\\w-])
+            '''
+          }
+          {
+            # `anchor-size()` takes an `<anchor-size>`, not an `<anchor-side>`.
+            'match': '''(?xi) (?<![\\w-])
+              (?: width|height|block|inline
+                | self-block|self-inline
+              )
+              (?![\\w-])
+            '''
+            'name': 'support.constant.property-value.css'
+          }
           {
             'include': '#property-values'
           }
