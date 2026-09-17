@@ -760,6 +760,33 @@ describe('CSS grammar', function () {
 					assert.deepStrictEqual(lines[0][2], { scopes: ['source.css', 'meta.at-rule.charset.css', 'punctuation.terminator.rule.css'], value: ';' });
 				});
 			});
+			describe('@property', function () {
+				it('tokenises custom property descriptors', function () {
+					var tokens;
+					tokens = testGrammar.tokenizeLine('@property --foo{syntax:"<length>";inherits:false;initial-value:0px;}').tokens;
+					assert.deepStrictEqual(tokens[0], { scopes: ['source.css', 'meta.at-rule.property.header.css', 'keyword.control.at-rule.property.css', 'punctuation.definition.keyword.css'], value: '@' });
+					assert.deepStrictEqual(tokens[3], { scopes: ['source.css', 'meta.at-rule.property.header.css', 'variable.parameter.property-name.css'], value: '--foo' });
+					assert.deepStrictEqual(tokens[4], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'punctuation.section.property.begin.bracket.curly.css'], value: '{' });
+					assert.deepStrictEqual(tokens[5], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-name.css', 'support.type.property-name.css'], value: 'syntax' });
+					assert.deepStrictEqual(tokens[8], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-value.css', 'string.quoted.double.css'], value: '<length>' });
+					assert.deepStrictEqual(tokens[13], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-value.css', 'constant.language.boolean.css'], value: 'false' });
+					assert.deepStrictEqual(tokens[15], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-name.css', 'support.type.property-name.css'], value: 'initial-value' });
+					assert.deepStrictEqual(tokens[18], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-value.css', 'constant.numeric.css', 'keyword.other.unit.px.css'], value: 'px' });
+					assert.deepStrictEqual(tokens[19], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'punctuation.terminator.rule.css'], value: ';' });
+					assert.deepStrictEqual(tokens[20], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'punctuation.section.property.end.bracket.curly.css'], value: '}' });
+				});
+
+				it('tokenises descriptors across lines', function () {
+					var lines;
+					lines = testGrammar.tokenizeLines('@property --bar {\n  syntax: "*";\n  inherits: true;\n  initial-value: 0 0 #0000;\n}');
+					assert.deepStrictEqual(lines[0][3], { scopes: ['source.css', 'meta.at-rule.property.header.css', 'variable.parameter.property-name.css'], value: '--bar' });
+					assert.deepStrictEqual(lines[1][1], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-name.css', 'support.type.property-name.css'], value: 'syntax' });
+					assert.deepStrictEqual(lines[2][1], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-name.css', 'support.type.property-name.css'], value: 'inherits' });
+					assert.deepStrictEqual(lines[2][4], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-value.css', 'constant.language.boolean.css'], value: 'true' });
+					assert.deepStrictEqual(lines[3][1], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'meta.property.css', 'meta.property-name.css', 'support.type.property-name.css'], value: 'initial-value' });
+					assert.deepStrictEqual(lines[4][0], { scopes: ['source.css', 'meta.at-rule.property.body.css', 'punctuation.section.property.end.bracket.curly.css'], value: '}' });
+				});
+			});
 			describe('@import', function () {
 				it('tokenises @import statements', function () {
 					var tokens;
