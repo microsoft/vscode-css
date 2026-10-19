@@ -65,5 +65,18 @@ export default {
 		}
 
 		return tokenizedLines;
+	},
+	// Return the scopes still open after tokenizing the input.
+	scopeStackAtEnd: function scopeStackAtEnd(text) {
+		const lines = text.split(/\r\n|\r|\n/g);
+
+		let ruleStack = vsctm.INITIAL;
+		for (let i = 0; i < lines.length; i++) {
+			ruleStack = grammar.tokenizeLine(lines[i], ruleStack).ruleStack;
+		}
+
+		// Use the scopes an editor reports for the next character. Walking
+		// frames would count inherited names more than once.
+		return ruleStack.contentNameScopesList.getScopeNames();
 	}
 }

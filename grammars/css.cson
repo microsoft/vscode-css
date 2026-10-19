@@ -37,7 +37,7 @@
 ]
 'repository':
   'arithmetic-operators':
-    'match': '[*/]|(?<=\\s|^)[-+](?=\\s|$)'
+    'match': '\\*|/(?!\\*)|(?<=\\s|^)[-+](?=\\s|$)'
     'name': 'keyword.operator.arithmetic.css'
   'at-rules':
     'patterns': [
@@ -334,7 +334,7 @@
                     'include': '#escapes'
                   }
                   {
-                    'match': '[^\'")\\s]+'
+                    'match': '[^\\\\\'")\\s]+'
                     'name': 'variable.parameter.document-rule.css'
                   }
                 ]
@@ -711,9 +711,10 @@
             'name': 'support.function.layer.css'
           '2':
             'name': 'punctuation.section.function.begin.bracket.round.css'
-        'end': '\\)'
+        # Layer names cannot contain an unescaped block opener.
+        'end': '(\\))|(?=\\{)'
         'endCaptures':
-          '0':
+          '1':
             'name': 'punctuation.section.function.end.bracket.round.css'
         'name': 'meta.function.layer.css'
         'patterns': [
@@ -844,8 +845,27 @@
         'name': 'constant.character.escape.codepoint.css'
       }
       {
+        'match': '\\\\.'
+        'name': 'constant.character.escape.css'
+      }
+    ]
+  'string-escapes':
+    'patterns': [
+      {
+        # Keep the string open when a newline terminates a hex escape.
+        'begin': '\\\\[0-9a-fA-F]{1,6}$\\s*'
+        'end': '^'
+        'name': 'constant.character.escape.codepoint.css'
+      }
+      {
+        # A hex escape consumes one whitespace character, including a newline.
+        'match': '\\\\[0-9a-fA-F]{1,6}(?:\\r\\n|[\\x20\\t\\r\\n\\f])?'
+        'name': 'constant.character.escape.codepoint.css'
+      }
+      {
+        # Only quoted strings allow backslash-newline continuation.
         'begin': '\\\\$\\s*'
-        'end': '^(?<!\\G)'
+        'end': '^'
         'name': 'constant.character.escape.newline.css'
       }
       {
@@ -864,6 +884,9 @@
         'name': 'punctuation.definition.condition.end.bracket.round.css'
     'name': 'meta.feature-query.css'
     'patterns': [
+      {
+        'include': '#string'
+      }
       {
         'include': '#feature-query-operators'
       }
@@ -929,6 +952,9 @@
       }
     ]
   'functions':
+    # Shared with custom properties and declaration-value arguments, where
+    # even recognized functions can contain balanced blocks. Do not recover
+    # at `{` here or in function-nesting.
     'patterns': [
       # Calculation
       {
@@ -1073,7 +1099,15 @@
             'include': '#property-values'
           }
           {
-            'match': '[^\'"),\\s]+'
+            # Keep escaped identifier suffixes from matching as functions.
+            'captures':
+              '0':
+                'patterns': [
+                  {
+                    'include': '#escapes'
+                  }
+                ]
+            'match': '(?:[^\\\\\'"),/{\\s]|/(?!\\*)|\\\\(?:[0-9a-fA-F]{1,6}[\\x20\\t\\f]?|[^\\r\\n\\f]))+'
             'name': 'variable.parameter.misc.css'
           }
         ]
@@ -1278,6 +1312,12 @@
             'name': 'punctuation.section.function.end.bracket.round.css'
         'patterns': [
           {
+            'include': '#escapes'
+          }
+          {
+            'include': '#comment-block'
+          }
+          {
             'match': '(?<=[(,\\s])[a-zA-Z]+(-[a-zA-Z0-9]*|\\\\(?:[0-9a-fA-F]{1,6}|.))*(?=[),\\s])'
             'name': 'support.constant.language-range.css'
           }
@@ -1286,14 +1326,14 @@
             'beginCaptures':
               '0':
                 'name': 'punctuation.definition.string.begin.css'
-            'end': '"'
+            'end': '"|(?=\\f)|(?<!\\\\)(?=$|\\n)'
             'endCaptures':
               '0':
                 'name': 'punctuation.definition.string.end.css'
             'name': 'string.quoted.double.css'
             'patterns': [
               {
-                'include': '#escapes'
+                'include': '#string-escapes'
               }
               {
                 'match': '(?<=["\\s])[a-zA-Z*]+(-[a-zA-Z0-9*]*)*(?=["\\s])'
@@ -1306,14 +1346,14 @@
             'beginCaptures':
               '0':
                 'name': 'punctuation.definition.string.begin.css'
-            'end': "'"
+            'end': "'|(?=\\f)|(?<!\\\\)(?=$|\\n)"
             'endCaptures':
               '0':
                 'name': 'punctuation.definition.string.end.css'
             'name': 'string.quoted.single.css'
             'patterns': [
               {
-                'include': '#escapes'
+                'include': '#string-escapes'
               }
               {
                 'match': "(?<=['\\s])[a-zA-Z*]+(-[a-zA-Z0-9*]*)*(?=['\\s])"
@@ -1496,11 +1536,20 @@
         'beginCaptures':
           '0':
             'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+        # General-enclosed values may contain nested and multiline blocks.
+        # A line-local brace guard cannot distinguish them from a rule body.
         'end': '\\)'
         'endCaptures':
           '0':
             'name': 'punctuation.definition.parameters.end.bracket.round.css'
         'patterns': [
+          {
+            'match': '\\\\.'
+            'name': 'constant.character.escape.css'
+          }
+          {
+            'include': '#string'
+          }
           {
             'include': '#media-features'
           }
@@ -2406,30 +2455,31 @@
       }
     ]
   'string':
+    # Atomic escapes keep their terminating whitespace out of bad-string diagnostics.
     'patterns': [
       {
         'begin': '"'
         'beginCaptures':
           '0':
             'name': 'punctuation.definition.string.begin.css'
-        'end': '"|(?<!\\\\)(?=$|\\n)'
+        'end': '"|(?=\\f)|(?<!\\\\)(?=$|\\n)'
         'endCaptures':
           '0':
             'name': 'punctuation.definition.string.end.css'
         'name': 'string.quoted.double.css'
         'patterns': [
           {
-            'begin': '(?:\\G|^)(?=(?:[^\\\\"]|\\\\.)+$)'
-            'end': '$'
+            'begin': '(?:\\G|^)(?=(?>[^\\\\"\\f\\n]|\\\\(?:[0-9a-fA-F]{1,6}[\\x20\\t\\f\\n]?|[^\\n]))+[\\f\\n])'
+            'end': '(?=[\\f\\n])'
             'name': 'invalid.illegal.unclosed.string.css'
             'patterns': [
               {
-                'include': '#escapes'
+                'include': '#string-escapes'
               }
             ]
           }
           {
-            'include': '#escapes'
+            'include': '#string-escapes'
           }
         ]
       }
@@ -2438,24 +2488,24 @@
         'beginCaptures':
           '0':
             'name': 'punctuation.definition.string.begin.css'
-        'end': "'|(?<!\\\\)(?=$|\\n)"
+        'end': "'|(?=\\f)|(?<!\\\\)(?=$|\\n)"
         'endCaptures':
           '0':
             'name': 'punctuation.definition.string.end.css'
         'name': 'string.quoted.single.css'
         'patterns': [
           {
-            'begin': "(?:\\G|^)(?=(?:[^\\\\']|\\\\.)+$)"
-            'end': '$'
+            'begin': "(?:\\G|^)(?=(?>[^\\\\'\\f\\n]|\\\\(?:[0-9a-fA-F]{1,6}[\\x20\\t\\f\\n]?|[^\\n]))+[\\f\\n])"
+            'end': '(?=[\\f\\n])'
             'name': 'invalid.illegal.unclosed.string.css'
             'patterns': [
               {
-                'include': '#escapes'
+                'include': '#string-escapes'
               }
             ]
           }
           {
-            'include': '#escapes'
+            'include': '#string-escapes'
           }
         ]
       }
@@ -2517,7 +2567,7 @@
     'name': 'meta.function.url.css'
     'patterns': [
       {
-        'match': '[^\'")\\s]+'
+        'match': '[^\\\\\'")\\s]+'
         'name': 'variable.parameter.url.css'
       }
       {
