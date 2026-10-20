@@ -645,6 +645,47 @@
         ]
       },
       {
+        # @container
+        'begin': '(?i)(?=@container([\\s({;]|/\\*|$))'
+        'end': '(?<=})(?!\\G)'
+        'patterns': [
+          {
+            'begin': '(?i)\\G(@)container'
+            'beginCaptures':
+              '0':
+                'name': 'keyword.control.at-rule.container.css'
+              '1':
+                'name': 'punctuation.definition.keyword.css'
+            'end': '(?=\\s*[{;])'
+            'name': 'meta.at-rule.container.header.css'
+            'patterns': [
+              {
+                'include': '#container-query'
+              }
+            ]
+          }
+          {
+            'begin': '{'
+            'beginCaptures':
+              '0':
+                'name': 'punctuation.section.container.begin.bracket.curly.css'
+            'end': '}'
+            'endCaptures':
+              '0':
+                'name': 'punctuation.section.container.end.bracket.curly.css'
+            'name': 'meta.at-rule.container.body.css'
+            'patterns': [
+              {
+                'include': '#rule-list-innards'
+              }
+              {
+                'include': '$self'
+              }
+            ]
+          }
+        ]
+      }
+      {
         # Single line @custom-at-rule terminated with `;`, such as
         # @my-rule foo bar;
         'begin': '(?i)(?=@[\\w-]+[^;]+;\s*$)'
@@ -1463,6 +1504,457 @@
       (?=\\s|\\)|$)
     '''
     'name': 'support.constant.property-value.css'
+  'container-query':
+    'begin': '\\G'
+    'end': '(?=\\s*[{;])'
+    'patterns': [
+      {
+        'include': '#comment-block'
+      }
+      {
+        # Optional container name preceding the query, e.g. @container card (…)
+        # A `<container-name>` is a `<custom-ident>`, so it may begin with an
+        # escape. The name is immediately followed by the container condition,
+        # so anything not in that position is part of the condition instead.
+        'captures':
+          '1':
+            'name': 'variable.parameter.container-name.css'
+            'patterns': [
+              {
+                'include': '#escapes'
+              }
+            ]
+        'match': '''(?xi)
+          (?<=^|\\s|\\*/|,)
+          (?!(?:none|and|or|not)(?![\\w-]))        # The four names the spec reserves
+          (
+            (?:[-a-zA-Z_]    | [^\\x00-\\x7F]      # First letter
+              |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\f]?|[^\\n])
+            )
+            (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+              |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\n\\f]?|[^\\n])
+            )*
+          )
+          (?![\\w(-])                              # Not a function call
+          (?=                                      # A query, the body or the end
+            \\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*
+            (?:\\(|(?i:style|scroll-state)\\s*\\(|\\{|$)
+          )
+        '''
+      }
+      {
+        'include': '#commas'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\))and(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.and.container.css'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\))or(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.or.container.css'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\))not(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.not.container.css'
+      }
+      {
+        # style() queries, e.g. @container style(--theme: dark)
+        'begin': '(?i)(?<![\\w-])(style)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.style.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        # style() takes a `<declaration-value>`, in which a `{` is legal.
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.style.css'
+        'patterns': [
+          {
+            'include': '#style-query-innards'
+          }
+        ]
+      }
+      {
+        # Scroll-state queries, e.g. @container scroll-state(stuck: top)
+        'begin': '(?i)(?<![\\w-])(scroll-state)(\\()'
+        'beginCaptures':
+          '1':
+            'name': 'support.function.scroll-state.css'
+          '2':
+            'name': 'punctuation.section.function.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.section.function.end.bracket.round.css'
+        'name': 'meta.function.scroll-state.css'
+        'patterns': [
+          {
+            'include': '#scroll-state-condition'
+          }
+        ]
+      }
+      {
+        'include': '#container-query-in-parens'
+      }
+      {
+        # An unknown query function is `<general-enclosed>` here too, not
+        # just inside a parenthesised query.
+        'include': '#container-general-enclosed'
+      }
+    ]
+  'style-query-innards':
+    # A `<style-query>` is a recursive grammar: `not`, `and`, `or`, groups in
+    # parentheses, a declaration, or a declaration-value range.
+    'patterns': [
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))and(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.and.container.css'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))or(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.or.container.css'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))not(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.not.container.css'
+      }
+      {
+        'include': '#style-in-parens'
+      }
+      {
+        'include': '#container-general-enclosed'
+      }
+      {
+        # A style feature may be a range, e.g. style(--level >= 2), which is
+        # not a declaration and so must not reach #rule-list-innards.
+        'begin': '''(?x) \\G
+          (?=
+            # A range holds a comparison before any `:`, which is what
+            # separates it from a declaration. Anchoring at \\G keeps this
+            # lookahead from being attempted at every character.
+            (?: [^:;{}()<>=] | \\([^()]*\\) )*
+            (?:>=|<=|=|<|>)
+          )
+        '''
+        'end': '(?=[)}])'
+        'patterns': [
+          {
+            'match': '--[^\\s;{}()<>=]+'
+            'name': 'variable.css'
+          }
+          {
+            'match': '>=|<=|=|<|>'
+            'name': 'keyword.operator.comparison.css'
+          }
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
+      {
+        # Local copy of the declaration-value region from #rule-list-innards,
+        # which also ends at `;`. A style() query holds a
+        # `<declaration-value>`, where a `;` nested in brackets or a
+        # balanced block belongs to the value, so this copy ends only at
+        # `}` or `)` and keeps the value whole.
+        'begin': '(:)\\s*'
+        'beginCaptures':
+          '1':
+            'name': 'punctuation.separator.key-value.css'
+        'end': '\\s*(?=[})])'
+        'contentName': 'meta.property-value.css'
+        'patterns': [
+          {
+            'include': '#property-values'
+          }
+        ]
+      }
+      {
+        'include': '#rule-list-innards'
+      }
+    ]
+  'style-in-parens':
+    'begin': '\\('
+    'beginCaptures':
+      '0':
+        'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+    'end': '\\)'
+    'endCaptures':
+      '0':
+        'name': 'punctuation.definition.parameters.end.bracket.round.css'
+    'patterns': [
+      {
+        'include': '#style-query-innards'
+      }
+    ]
+  'container-query-in-parens':
+    'begin': '\\('
+    'beginCaptures':
+      '0':
+        'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+    'end': '\\)'
+    'endCaptures':
+      '0':
+        'name': 'punctuation.definition.parameters.end.bracket.round.css'
+    'patterns': [
+      {
+        # A query in parentheses may itself be a parenthesised query, so the
+        # groups have to nest rather than close at the first `)`.
+        'include': '#container-query-in-parens'
+      }
+      {
+        'include': '#size-container-features'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))and(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.and.container.css'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))or(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.or.container.css'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))not(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.not.container.css'
+      }
+      {
+        'match': ':'
+        'name': 'punctuation.separator.key-value.css'
+      }
+      {
+        'match': '>=|<=|=|<|>'
+        'name': 'keyword.operator.comparison.css'
+      }
+      {
+        'captures':
+          '1':
+            'name': 'constant.numeric.css'
+          '2':
+            'name': 'keyword.operator.arithmetic.css'
+          '3':
+            'name': 'constant.numeric.css'
+        'match': '(\\d+)\\s*(/)\\s*(\\d+)'
+        'name': 'meta.ratio.css'
+      }
+      {
+        # A size container feature takes a length or a ratio, and only
+        # `orientation` takes a keyword, so the media feature values do
+        # not belong here.
+        'match': '(?i)(?<=^|\\s|:|\\*/)(?:portrait|landscape)(?=\\s|\\)|$)'
+        'name': 'support.constant.property-value.css'
+      }
+      {
+        'include': '#numeric-values'
+      }
+      {
+        'include': '#comment-block'
+      }
+      {
+        'include': '#functions'
+      }
+      {
+        'include': '#container-general-enclosed'
+      }
+      {
+        'include': '#string'
+      }
+    ]
+  'container-general-enclosed':
+    # `<general-enclosed>` lets an unknown function appear in a query. Its
+    # contents only have to be balanced, so they are parsed for nesting and
+    # for strings, which may hold an unmatched bracket.
+    # The function name is a CSS identifier, so it may contain escapes and
+    # non-ASCII characters. Matching only the ASCII tail would start a
+    # function part way through a name such as `f\\6f o(…)`.
+    'begin': '''(?x)
+      (?<![\\w-])
+      (
+        (?:[-a-zA-Z_]    | [^\\x00-\\x7F]      # First letter
+          |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])
+        )
+        (?:[-a-zA-Z0-9_] | [^\\x00-\\x7F]      # Remainder of identifier
+          |\\\\(?:[0-9a-fA-F]{1,6}[ \\t\\f]?|[^\\n])
+        )*
+      )
+      (\\()
+    '''
+    'beginCaptures':
+      '1':
+        'name': 'support.function.misc.css'
+        'patterns': [
+          {
+            'include': '#escapes'
+          }
+        ]
+      '2':
+        'name': 'punctuation.section.function.begin.bracket.round.css'
+    'end': '\\)'
+    'endCaptures':
+      '0':
+        'name': 'punctuation.section.function.end.bracket.round.css'
+    'name': 'meta.function.misc.css'
+    'patterns': [
+      {
+        'include': '#container-general-enclosed'
+      }
+      {
+        'include': '#comment-block'
+      }
+      {
+        'include': '#string'
+      }
+      {
+        'include': '#numeric-values'
+      }
+    ]
+  'size-container-features':
+    'captures':
+      '1':
+        'name': 'support.type.property-name.container.css'
+    'match': '''(?xi)
+      (?<=^|\\s|\\(|\\*/)           # Preceded by whitespace, bracket or comment
+      (
+        (?:min-|max-)?              # Range features
+        (?: width
+          | height
+          | inline-size
+          | block-size
+          | aspect-ratio
+        )
+        | orientation               # Discrete features
+      )
+      (?=\\s|$|[><:=]|\\)|/\\*)     # Terminates cleanly
+    '''
+  'scroll-state-condition':
+    'patterns': [
+      {
+        'include': '#comment-block'
+      }
+      {
+        'begin': '\\('
+        'beginCaptures':
+          '0':
+            'name': 'punctuation.definition.parameters.begin.bracket.round.css'
+        'end': '\\)'
+        'endCaptures':
+          '0':
+            'name': 'punctuation.definition.parameters.end.bracket.round.css'
+        'patterns': [
+          {
+            'include': '#scroll-state-condition'
+          }
+        ]
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))and(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.and.container.css'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))or(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.or.container.css'
+      }
+      {
+        'match': '(?i)(?<=\\s|^|\\*/|\\(|\\))not(?=\\s|\\(|/\\*|$)'
+        'name': 'keyword.operator.logical.not.container.css'
+      }
+      {
+        'include': '#container-general-enclosed'
+      }
+      {
+        'include': '#string'
+      }
+      {
+        'begin': '(?i)(?<![\\w-])(stuck)(?=\\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*:)'
+        'beginCaptures':
+          '1':
+            'name': 'support.type.property-name.container.css'
+        'end': '(?=\\)|(?:\\s+|(?<=\\*/))(?i:and|or)(?=\\s|\\()|$)'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': ':'
+            'name': 'punctuation.separator.key-value.css'
+          }
+          {
+            # A feature value is a component value, so a function such as
+            # `var()` may stand in for the keyword.
+            'include': '#functions'
+          }
+          {
+            'match': '(?i)(?<![\\w-])(?:none|top|right|bottom|left|block-start|inline-start|block-end|inline-end)(?![\\w-])'
+            'name': 'support.constant.property-value.css'
+          }
+        ]
+      }
+      {
+        'begin': '(?i)(?<![\\w-])(snapped)(?=\\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*:)'
+        'beginCaptures':
+          '1':
+            'name': 'support.type.property-name.container.css'
+        'end': '(?=\\)|(?:\\s+|(?<=\\*/))(?i:and|or)(?=\\s|\\()|$)'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': ':'
+            'name': 'punctuation.separator.key-value.css'
+          }
+          {
+            # A feature value is a component value, so a function such as
+            # `var()` may stand in for the keyword.
+            'include': '#functions'
+          }
+          {
+            'match': '(?i)(?<![\\w-])(?:none|x|y|block|inline|both)(?![\\w-])'
+            'name': 'support.constant.property-value.css'
+          }
+        ]
+      }
+      {
+        'begin': '(?i)(?<![\\w-])(scrollable|scrolled)(?=\\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*:)'
+        'beginCaptures':
+          '1':
+            'name': 'support.type.property-name.container.css'
+        'end': '(?=\\)|(?:\\s+|(?<=\\*/))(?i:and|or)(?=\\s|\\()|$)'
+        'patterns': [
+          {
+            'include': '#comment-block'
+          }
+          {
+            'match': ':'
+            'name': 'punctuation.separator.key-value.css'
+          }
+          {
+            # A feature value is a component value, so a function such as
+            # `var()` may stand in for the keyword.
+            'include': '#functions'
+          }
+          {
+            'match': '(?i)(?<![\\w-])(?:none|top|right|bottom|left|block-start|inline-start|block-end|inline-end|x|y|block|inline)(?![\\w-])'
+            'name': 'support.constant.property-value.css'
+          }
+        ]
+      }
+      {
+        # Scroll-state features are also valid in boolean context.
+        'match': '''(?xi)
+          (?<![\\w-])
+          (stuck|snapped|scrollable|scrolled)
+          (?![\\w-])
+          (?=
+            \\s*(?:/\\*(?:[^*]|\\*[^/])*\\*/\\s*)*
+            (?:\\)|(?:and|or)(?=\\s|\\()|$)
+          )
+        '''
+        'name': 'support.type.property-name.container.css'
+      }
+    ]
   'media-query':
     'begin': '\\G'
     'end': '(?=\\s*[{;])'
